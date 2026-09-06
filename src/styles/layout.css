@@ -101,7 +101,8 @@ main {
 #toolbar {
   display: flex;
   gap: 10px;
-  margin: 0 0 18px;
+  /* Clear of the heading button, whose offset shadow reaches 4px below it. */
+  margin: 20px 0 18px;
 }
 
 #search {
@@ -112,6 +113,7 @@ main {
   border: 3px solid var(--input-border);
   background: var(--surface);
   color: inherit;
+  box-shadow: 4px 4px 0 var(--shadow);
   font-size: 16px;
   font-weight: 600;
 
@@ -124,6 +126,7 @@ main {
 .views {
   display: flex;
   flex: none;
+  box-shadow: 4px 4px 0 var(--shadow);
 
   & button {
     padding: 0 14px;
