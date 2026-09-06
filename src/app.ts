@@ -1,6 +1,12 @@
 import { type Card, listCards, saveCard, deleteCard, putCards } from "./cards.js";
 import { exportCards, importCards } from "./backup.js";
-import { FORMATS, type Format, type FormatId, suggestFormat } from "./barcode/encode.js";
+import {
+  FORMATS,
+  type Format,
+  type FormatId,
+  formatLabel,
+  suggestFormat,
+} from "./barcode/encode.js";
 import { canEncode } from "./barcode/render.js";
 import {
   buildFromTemplate,
@@ -44,6 +50,7 @@ const el = {
   exportButton: find<HTMLButtonElement>("export"),
   importButton: find<HTMLButtonElement>("import"),
   importFile: find<HTMLInputElement>("import-file"),
+  version: find("version"),
 
   // Viewer
   viewer: find<HTMLDialogElement>("viewer"),
@@ -61,6 +68,9 @@ const el = {
   form: find<HTMLFormElement>("card-form"),
   name: find<HTMLInputElement>("name"),
   payload: find<HTMLInputElement>("payload"),
+  scan: find<HTMLButtonElement>("scan"),
+  scanFile: find<HTMLInputElement>("scan-file"),
+  scanStatus: find("scan-status"),
   display: find<HTMLInputElement>("display"),
   link: find<HTMLInputElement>("link"),
   color: find<HTMLInputElement>("color"),
@@ -480,10 +490,14 @@ el.cards.addEventListener("pointermove", (event) => {
   const under = document.elementFromPoint(event.clientX, event.clientY)?.closest(".card, .row");
   if (!under || under === drag.item || under.parentElement !== drag.item.parentElement) return;
   const box = under.getBoundingClientRect();
-  const after =
-    view === "list"
-      ? event.clientY > box.top + box.height / 2
-      : event.clientY > box.top + box.height / 2 || event.clientX > box.left + box.width / 2;
+  const self = drag.item.getBoundingClientRect();
+  // Compare horizontally only when the two share a row, which in a one-column grid
+  // never happens. Testing x unconditionally meant a drag upward still counted as
+  // "after", because the handle sits on the right and carries the pointer with it.
+  const sameRow = Math.abs(box.top - self.top) < box.height / 2;
+  const after = sameRow
+    ? event.clientX > box.left + box.width / 2
+    : event.clientY > box.top + box.height / 2;
   under.parentElement?.insertBefore(drag.item, after ? under.nextSibling : under);
   // Re-anchor to the new position so the element does not jump away from the finger.
   drag.x = event.clientX;
@@ -565,6 +579,37 @@ el.rotationExample.addEventListener("click", () => {
   el.rotation.value = "YYYY####MM####DD####HH####mmss";
   preview();
   el.rotation.focus();
+});
+
+el.scan.addEventListener("click", () => el.scanFile.click());
+
+el.scanFile.addEventListener("change", async (event) => {
+  const target = event.target as HTMLInputElement;
+  const [file] = target.files ?? [];
+  target.value = "";
+  if (!file) return;
+  el.scan.disabled = true;
+  el.scanStatus.textContent = "Reading\u2026";
+  try {
+    const { scanImage } = await import("./barcode/scan.js");
+    const found = await scanImage(file);
+    if (!found) {
+      el.scanStatus.textContent =
+        "No barcode found. Fill the frame with it, straight on and evenly lit.";
+      return;
+    }
+    // Whatever the code actually says wins over anything typed: reading the printed
+    // digits by eye is exactly the mistake scanning exists to prevent.
+    el.payload.value = found.text;
+    el.format.value = found.format;
+    formatTouched = true;
+    el.scanStatus.textContent = `Read a ${formatLabel(found.format)}.`;
+    preview();
+  } catch (error) {
+    el.scanStatus.textContent = error instanceof Error ? error.message : String(error);
+  } finally {
+    el.scan.disabled = false;
+  }
 });
 
 el.logoPick.addEventListener("click", () => el.logoFile.click());
@@ -731,6 +776,9 @@ window.addEventListener("beforeinstallprompt", (event) => {
   // Without this Chrome shows its own bar, which cannot explain why installing matters.
   event.preventDefault();
   installPrompt = event;
+  // Injected at build time; see buildVersion in vite.config.ts.
+  el.version.textContent = `Version ${__APP_VERSION__}`;
+
   maybeOfferInstall();
 });
 

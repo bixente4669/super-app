@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -6,6 +7,24 @@ import type { Plugin } from "vite";
 import { defineConfig } from "vite-plus";
 
 const here = (path: string) => fileURLToPath(new URL(path, import.meta.url));
+
+/**
+ * Stamped into the build so the running app can say which one it is. Answering
+ * "am I on the new version?" otherwise means diffing asset hashes by hand, and the
+ * service worker is cache-first, so an old build lingering is entirely normal.
+ */
+function buildVersion(): string {
+  const { version } = JSON.parse(readFileSync(here("./package.json"), "utf8")) as {
+    version: string;
+  };
+  let commit = "local";
+  try {
+    commit = execSync("git rev-parse --short HEAD", { encoding: "utf8" }).trim();
+  } catch {
+    // A build from a tarball has no git; the version alone still identifies it.
+  }
+  return `${version}+${commit}`;
+}
 
 /** Every file under public/, as paths relative to it. */
 function listPublic(directory: string, prefix = ""): string[] {
@@ -66,6 +85,7 @@ const config: Config = {
   // Everything else is left at its default. This is a GitHub Pages project site,
   // so the app is served from a sub-path rather than the domain root.
   base: "/super-app/",
+  define: { __APP_VERSION__: JSON.stringify(buildVersion()) },
   lint: {
     options: { typeAware: true, typeCheck: true },
     // Every string spread here is over an ASCII barcode pattern — module strings,

@@ -397,3 +397,55 @@ test("QR runs cover exactly the dark modules, and nothing else", () => {
     );
   }
 });
+
+/* ------------------------------------------------------------------ Decoding */
+
+const { decodeRow } = await import("./decode.js");
+
+/** Expands a module string into a pixel row, as a clean scan of the symbol would be. */
+function rowFrom(modules: string, scale = 3, quiet = 12): Uint8Array {
+  const row = new Uint8Array((modules.length + quiet * 2) * scale);
+  for (let i = 0; i < modules.length; i += 1) {
+    if (modules[i] !== "1") continue;
+    for (let p = 0; p < scale; p += 1) row[(quiet + i) * scale + p] = 1;
+  }
+  return row;
+}
+
+test("every linear format survives a round trip through the decoder", () => {
+  const cases: [string, string][] = [
+    ["code128", "ABC-1234"],
+    ["code128", "7777000199998888"],
+    ["code128", "12345678"],
+    ["code128", "Card 42"],
+    ["ean13", "5901234123457"],
+    ["ean13", "9780201379624"],
+    ["ean8", "96385074"],
+    ["upca", "036000291452"],
+    ["itf", "1234567890123456789012"],
+    ["code39", "ABC-123"],
+  ];
+  for (const [format, value] of cases) {
+    const symbol = encode(format, value);
+    const found = decodeRow(rowFrom(symbol.modules));
+    assert.ok(found, `${format} ${value} did not decode at all`);
+    assert.equal(found!.text, symbol.text, `${format} ${value} decoded wrong`);
+    assert.equal(found!.format, format, `${format} ${value} identified as ${found!.format}`);
+  }
+});
+
+test("decoding survives a range of print scales", () => {
+  for (const scale of [2, 3, 5, 8]) {
+    const symbol = encode("code128", "7777000199998888");
+    const found = decodeRow(rowFrom(symbol.modules, scale));
+    assert.ok(found, `scale ${scale} failed`);
+    assert.equal(found!.text, "7777000199998888");
+  }
+});
+
+test("a row with no symbol in it decodes to nothing", () => {
+  assert.equal(decodeRow(new Uint8Array(400)), null, "blank");
+  const noise = new Uint8Array(400);
+  for (let i = 0; i < noise.length; i += 1) noise[i] = (i * 7919) % 5 === 0 ? 1 : 0;
+  assert.equal(decodeRow(noise), null, "noise must not produce a false reading");
+});

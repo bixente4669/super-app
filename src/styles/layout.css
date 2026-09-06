@@ -43,7 +43,7 @@ header {
 main {
   max-width: 1040px;
   margin: auto;
-  padding: 40px max(24px, var(--safe-right)) max(40px, var(--safe-bottom))
+  padding: 40px max(24px, var(--safe-right)) calc(56px + var(--safe-bottom))
     max(24px, var(--safe-left));
 }
 
@@ -164,7 +164,7 @@ main {
   }
 
   main {
-    padding: 26px max(18px, var(--safe-right)) max(24px, var(--safe-bottom))
+    padding: 26px max(18px, var(--safe-right)) calc(48px + var(--safe-bottom))
       max(18px, var(--safe-left));
   }
 
@@ -185,7 +185,7 @@ main {
 #toast {
   position: fixed;
   right: 0;
-  bottom: max(20px, var(--safe-bottom));
+  bottom: calc(20px + var(--safe-bottom));
   left: 0;
   z-index: 10;
   width: max-content;
