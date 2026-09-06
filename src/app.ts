@@ -2,14 +2,12 @@ import { type Card, listCards, saveCard, deleteCard, putCards } from "./cards.js
 import { exportCards, importCards } from "./backup.js";
 import { FORMATS, type Format, type FormatId, suggestFormat } from "./barcode/encode.js";
 import { canEncode } from "./barcode/render.js";
-import type { Rule } from "./barcode/rules.js";
 import {
-  detectRule,
-  detectVolatile,
-  findRule,
-  looksTimeDerived,
+  buildFromTemplate,
   currentPayload,
-} from "./barcode/rules.js";
+  looksTimeDerived,
+  templateDigits,
+} from "./barcode/rotation.js";
 import { cardFace, paint, renderSymbol, illustratePdf417 } from "./ui.js";
 
 /**
@@ -78,10 +76,8 @@ const el = {
   formatHelp: find<HTMLDetailsElement>("format-help"),
   formatGallery: find("format-gallery"),
   live: find<HTMLInputElement>("live"),
-  liveLabel: find("live-label"),
-  rule: find<HTMLInputElement>("rule"),
-  ruleRow: find("rule-row"),
-  ruleLabel: find("rule-label"),
+  rotation: find<HTMLInputElement>("rotation"),
+  rotationPreview: find("rotation-preview"),
   cardPreview: find("card-preview"),
   previewSymbol: find("preview-symbol"),
   previewError: find("preview-error"),
@@ -92,9 +88,7 @@ const el = {
 } as const;
 let editingId: string | null = null;
 /** Set when the payload field holds a card number for a rule, not a raw payload. */
-let editingRule: Rule | null = null;
 let formatTouched = false;
-let liveTouched = false;
 let editingLogo: Blob | null = null;
 let busy = false;
 /** Interval that keeps a rotating code current while the card is on screen. */
@@ -108,7 +102,7 @@ const VIEW_KEY = "super-app-view";
 /* -------------------------------------------------------------- Card viewer */
 
 function openViewer(card: Card) {
-  const rule = card.rule ? findRule(card.rule) : null;
+  const rotating = Boolean(card.rotation);
   el.viewerName.textContent = card.name;
   el.viewerNumber.textContent = card.display || card.payload;
   el.viewerLink.hidden = !(card.live && card.link);
@@ -118,15 +112,15 @@ function openViewer(card: Card) {
   }
   el.viewerNote.textContent = card.live
     ? "This shop issues a new code at every visit, so it cannot be stored. Open the shop to show the code at the till."
-    : rule
-      ? `This shop changes its code constantly, so it is rebuilt from your card number each time (${rule.label}).`
+    : rotating
+      ? "This shop rebuilds its code from the clock, so it is rebuilt here each time you open the card."
       : "";
   clearInterval(refresh);
   // A live card passes no payload, so the panel hides itself.
   const draw = () =>
     renderSymbol(el.viewerSymbol, card.format, card.live ? "" : currentPayload(card), card.payload);
   draw();
-  if (rule && !card.live) refresh = setInterval(draw, 20_000);
+  if (rotating && !card.live) refresh = setInterval(draw, 20_000);
   el.viewerEdit.onclick = () => {
     el.viewer.close();
     openEditor(card);
@@ -218,36 +212,34 @@ for (const format of FORMATS) {
   el.format.append(new Option(format.label, format.id));
 }
 
-/** What the barcode should actually carry, once any rotating rule is applied. */
+/** What the barcode carries: the pattern expanded when there is one, else as typed. */
 function effectivePayload() {
   const value = el.payload.value.trim();
-  if (el.ruleRow.hidden || !el.rule.checked) return value;
-  if (editingRule) return editingRule.build(value);
-  const detected = detectRule(value);
-  return detected ? detected.rule.build(detected.number) : value;
-}
-
-function refreshRuleRow() {
-  const value = el.payload.value.trim();
-  const detected = editingRule ? null : detectRule(value);
-  const rule = editingRule ?? detected?.rule ?? null;
-  el.ruleRow.hidden = !rule;
-  if (!rule) return;
-  el.ruleLabel.textContent = editingRule
-    ? `Rebuild this code from the clock each time (${rule.label}, rule checked ${rule.verified}).`
-    : `This code changes every few minutes. Save your card number and rebuild it each time (${rule.label}).`;
-}
-
-function refreshLiveRow() {
-  const found = detectVolatile(el.payload.value.trim());
-  if (found && !liveTouched) {
-    el.live.checked = true;
-    if (!el.link.value) el.link.value = found.store.url;
+  const template = el.rotation.value.trim();
+  if (!template) return value;
+  try {
+    return buildFromTemplate(template, value);
+  } catch {
+    return "";
   }
-  el.liveLabel.textContent = found
-    ? `${found.store.label} issues a new code at every visit (seen ${found.store.observed}), and it is not built from the clock, so it cannot be rebuilt offline. Save the card number and open the shop for the code.`
-    : "This shop issues a new code every visit; open the shop to get it.";
-  return found;
+}
+
+/** Shows what the pattern currently produces, so it can be checked against the shop. */
+function refreshRotation() {
+  const template = el.rotation.value.trim();
+  if (!template) {
+    el.rotationPreview.textContent = "";
+    return;
+  }
+  const needed = templateDigits(template);
+  try {
+    const built = buildFromTemplate(template, el.payload.value.trim());
+    el.rotationPreview.textContent = `Right now this makes ${built}, using ${needed} digits of the card number.`;
+    el.rotationPreview.classList.remove("danger");
+  } catch (error) {
+    el.rotationPreview.textContent = error instanceof Error ? error.message : String(error);
+    el.rotationPreview.classList.add("danger");
+  }
 }
 
 /* --------------------------------------------------------- Format gallery  */
@@ -326,8 +318,7 @@ el.formatHelp.addEventListener("toggle", () => {
 function preview() {
   const color = el.color.value;
   el.colorValue.value = color;
-  const volatile = refreshLiveRow();
-  refreshRuleRow();
+  refreshRotation();
 
   // Built through cardFace, so the preview cannot drift from a real card again.
   const draft = {
@@ -343,16 +334,15 @@ function preview() {
   syncLogoFetch();
 
   if (el.live.checked) {
-    el.ruleRow.hidden = true;
     renderSymbol(el.previewSymbol, "none", "");
-    el.previewError.textContent = volatile
-      ? "Saved as a live card: the number is kept, and the code comes from the shop."
-      : "";
+    el.rotationPreview.textContent = "";
+    el.previewError.textContent =
+      "Saved as a live card: the number is kept, and the code comes from the shop.";
     return;
   }
 
   const payload = effectivePayload();
-  if (!formatTouched && payload && !editingRule) el.format.value = suggestFormat(payload);
+  if (!formatTouched && payload) el.format.value = suggestFormat(payload);
   const format = el.format.value;
   el.formatHint.textContent = FORMATS.find((entry) => entry.id === format)?.hint ?? "";
   for (const option of el.format.options) {
@@ -361,7 +351,7 @@ function preview() {
 
   markGallery(format, payload);
   renderSymbol(el.previewSymbol, format, payload);
-  const warn = !el.rule.checked && el.ruleRow.hidden && payload && looksTimeDerived(payload);
+  const warn = !el.rotation.value.trim() && payload && looksTimeDerived(payload);
   el.previewError.textContent = warn
     ? "This value contains today’s date, so it is probably a code that expires. Check it still scans tomorrow."
     : "";
@@ -369,11 +359,10 @@ function preview() {
 
 function openEditor(card?: Card) {
   editingId = card?.id ?? null;
-  editingRule = card?.rule ? findRule(card.rule) : null;
+
   editingOrder =
     card?.order ?? (allCards.length ? Math.max(...allCards.map((c) => c.order ?? 0)) + 1 : 0);
   formatTouched = Boolean(card);
-  liveTouched = Boolean(card);
   editingLogo = card?.logo ?? null;
   el.editorTitle.textContent = card ? "Edit card" : "Add card";
   el.name.value = card?.name ?? "";
@@ -383,7 +372,7 @@ function openEditor(card?: Card) {
   el.color.value = card?.color ?? "#ff2d87";
   el.link.value = card?.link ?? "";
   el.live.checked = Boolean(card?.live);
-  el.rule.checked = Boolean(card?.rule);
+  el.rotation.value = card?.rotation ?? "";
   el.deleteButton.hidden = !card;
   el.formError.textContent = "";
   el.logoHint.textContent = "";
@@ -604,10 +593,7 @@ el.format.addEventListener("change", () => {
   formatTouched = true;
   preview();
 });
-el.live.addEventListener("change", () => {
-  liveTouched = true;
-  preview();
-});
+el.live.addEventListener("change", () => preview());
 
 el.form.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -617,28 +603,15 @@ el.form.addEventListener("submit", async (event) => {
   try {
     const typed = el.payload.value.trim();
     const live = el.live.checked;
-    const volatile = detectVolatile(typed);
-    let payload = typed;
-    let rule = null;
-    if (live) {
-      // Only the stable card number is worth keeping; the token is dead on arrival.
-      payload = volatile ? volatile.number : typed;
-    } else {
-      const detected = editingRule ? null : detectRule(typed);
-      const keepRule = !el.ruleRow.hidden && el.rule.checked;
-      // With a rule, `payload` holds the card number and the code is rebuilt on open.
-      if (keepRule) {
-        payload = detected ? detected.number : typed;
-        rule = editingRule?.id ?? detected?.rule.id ?? null;
-      }
-    }
+    // With a pattern, `payload` holds the card number and the code is rebuilt on open.
+    const rotation = live ? "" : el.rotation.value.trim();
     await saveCard({
       id: editingId ?? crypto.randomUUID(),
       name: el.name.value,
-      payload,
+      payload: typed,
       format: el.format.value as FormatId,
       display: el.display.value,
-      rule,
+      rotation: rotation || null,
       live,
       link: el.link.value,
       color: el.color.value,

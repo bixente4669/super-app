@@ -71,7 +71,7 @@ export const FORMATS: Format[] = [
     id: "qr",
     label: "QR code",
     short: "Square block",
-    hint: "Any text. Used by X5 \u041a\u043b\u0443\u0431, \u041a\u0430\u043b\u0438\u043d\u0430-\u041c\u0430\u043b\u0438\u043d\u0430 and AM Wine.",
+    hint: "Any text. The square block, common on newer loyalty cards.",
   },
   {
     id: "pdf417",

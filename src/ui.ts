@@ -133,8 +133,8 @@ export function renderSymbol(
 
 /**
  * A drawing of a PDF417 symbol, for the format gallery only. The encoder cannot
- * produce one, and Лента's code could not be stored anyway, so this exists purely
- * so the stacked shape is recognisable against a real card. It is not scannable.
+ * produce one, so this exists purely so the stacked shape stays recognisable when
+ * matching a card against the gallery. It is not scannable.
  */
 export function illustratePdf417(): SVGSVGElement {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");

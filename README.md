@@ -33,26 +33,23 @@ has supported it since 16.5, and the build lowers it for older targets anyway.
 | `order`               | Manual priority, set by dragging; ties fall back to name                      |
 | `name`, `color`, `id` | Presentation and identity                                                     |
 
-Three findings from real cards drove this shape, and all are easy to get wrong:
+Three things that real cards do, all easy to get wrong, drove this shape:
 
-- **The printed number is not always the payload.** One shop's page prints a barcode carrying
-  `7777000199998888` while the page prints `3333 0001 5555 7777`. Typing the visible digits
-  produces a card that will not scan, so `display` is kept separate from `payload`.
-- **Some codes expire.** AM Wine's QR interleaves the card number with a UTC timestamp
-  (`YYYY|nnnn|MM|nnnn|DD|nnnn|HH|nnnn|mm|ss`), so a stored copy dies within minutes. Those
-  cards store the card number plus a rule id from `src/barcode/rules.js`, and the payload is
-  rebuilt every time the card is opened. A payload that embeds today's date but matches no
-  rule raises a warning instead of being saved silently.
-- **Some codes cannot be reproduced at all.** Лента and X5 Клуб append a server-issued token
-  (`P<card>;000000 <6 digits>` and `<card>QR<10 digits>`). Two samples 46 minutes apart shared
-  the card number and share nothing else, and neither tail derives from the clock, so no rule
-  can rebuild them. Those are stored as `live` cards: the stable card number is kept and the
-  code is fetched from the shop. Pasting such a payload is recognised and converted
-  automatically, so the dead token is never stored.
+- **The printed number is not always the payload.** One shop prints one number above a
+  barcode that encodes a different one, confirmed by comparing bar patterns. Typing what you
+  can read produces a card that will not scan, so `payload` and `display` are kept apart and
+  scanning is the reliable way to add a card.
+- **Some codes are rebuilt from the clock.** They interleave the card number with the current
+  time, so a stored copy dies within minutes. Such a card stores its number plus a pattern the
+  holder writes — `YYYY####MM####DD####HH####mmss`, say — and the code is rebuilt every time
+  the card is opened. Nothing about any shop is hard-coded; the pattern comes from the user.
+- **Some codes cannot be reproduced at all.** Others append a server-issued token that changes
+  on every visit and is not derived from the clock. Those are marked `live`: the stable card
+  number is kept and the code is fetched from the shop, rather than drawing a barcode that
+  will fail at the till.
 
 A plastic card cannot rotate, so a shop issuing one must also accept a static code. Where a
-plastic card exists, scanning it is preferable to a live card: METRO and Азбука Вкуса already
-work this way.
+plastic card exists, scanning it beats a live card.
 
 ## Current scope
 
@@ -86,7 +83,7 @@ levels, which is what caught a reversed Reed-Solomon polynomial and two module-p
 - **Scanning.** Safari exposes no `BarcodeDetector`, so decoding has to be hand-written:
   1D and QR from the camera or a photo.
 
-PDF417 rendering was dropped rather than deferred. Лента was the only card needing it, and its
+PDF417 rendering was dropped rather than deferred. The only card needing it turned out to be one whose
 code cannot be reproduced offline, so a drawn PDF417 would never scan. That removes the
 2787-entry symbol table, which was the largest remaining piece of work.
 

@@ -14,8 +14,11 @@ export interface Card {
   format: FormatId;
   /** The number the shop prints, when it differs from `payload`. */
   display: string;
-  /** A rotating-code rule id; the payload is then rebuilt at display time. */
-  rule: string | null;
+  /**
+   * A pattern rebuilding the code from the clock, written by the card holder.
+   * When set, `payload` holds the card number rather than the code itself.
+   */
+  rotation: string | null;
   /** The shop issues a new code each visit, so no stored code can work. */
   live: boolean;
   /** Where to get a live card's code. Restricted to https. */
@@ -30,7 +33,7 @@ import { type FormatId, isFormat, suggestFormat } from "./barcode/encode.js";
 
 const NAME = "super-app-cards";
 const STORE = "cards";
-const VERSION = 2;
+const VERSION = 3;
 let database;
 
 function openDatabase() {
@@ -39,6 +42,20 @@ function openDatabase() {
     request.onupgradeneeded = (event) => {
       const db = request.result;
       if (event.oldVersion < 1) db.createObjectStore(STORE, { keyPath: "id" });
+      if (event.oldVersion >= 2 && event.oldVersion < 3) {
+        // Version 2 named rotation rules after specific shops. Those are gone; a card
+        // that used one becomes live, so it shows its number instead of a code that
+        // would no longer be right.
+        const store = request.transaction!.objectStore(STORE);
+        const cursors = store.openCursor();
+        cursors.onsuccess = () => {
+          const cursor = cursors.result;
+          if (!cursor) return;
+          const { rule, ...card } = cursor.value as Card & { rule?: string | null };
+          cursor.update({ ...card, rotation: null, live: card.live || Boolean(rule) });
+          cursor.continue();
+        };
+      }
       if (event.oldVersion >= 1 && event.oldVersion < 2) {
         // Version 1 stored a bare `number` with no format; carry it into `payload`.
         // The upgrade transaction is always present inside onupgradeneeded.
@@ -54,7 +71,7 @@ function openDatabase() {
             color,
             payload: number,
             display: "",
-            rule: null,
+            rotation: null,
             live: false,
             link: "",
             logo: null,
@@ -121,7 +138,7 @@ export function validate(card: Partial<Card>): Card {
     payload,
     format,
     display: (card.display ?? "").trim(),
-    rule: card.rule ?? null,
+    rotation: typeof card.rotation === "string" && card.rotation ? card.rotation : null,
     live: Boolean(card.live),
     link,
     color,

@@ -300,69 +300,62 @@ test("every quiet zone meets the 10-module minimum for reliable scanning", () =>
   }
 });
 
-/* ------------------------------------------------------------------- Rules  */
+/* ---------------------------------------------------------------- Rotation  */
 
-const rules = await import("./rules.js");
+const rotation = await import("./rotation.js");
 
-test("the AM Wine rule reproduces the observed payload exactly", () => {
+test("a template interleaves the card number with the clock", () => {
   const at = new Date(Date.UTC(2026, 8, 6, 10, 8, 3));
-  const built = rules.RULES[0].build("1111222233334444", at);
+  const built = rotation.buildFromTemplate(
+    "YYYY####MM####DD####HH####mmss",
+    "1111222233334444",
+    at,
+  );
+  assert.equal(built, "202611110922220633331044440803");
+  assert.equal(rotation.templateDigits("YYYY####MM####DD####HH####mmss"), 16);
+});
+
+test("literals pass through, and separators survive", () => {
+  const at = new Date(Date.UTC(2026, 8, 6, 10, 8, 3));
   assert.equal(
-    built,
+    rotation.buildFromTemplate("P############;000000 HHmmss", "802500682686", at),
+    "P802500682686;000000 100803",
+  );
+  assert.equal(rotation.buildFromTemplate("no tokens here", "123", at), "no tokens here");
+});
+
+test("mm is not swallowed by MM", () => {
+  const at = new Date(Date.UTC(2026, 8, 6, 10, 8, 3));
+  assert.equal(rotation.buildFromTemplate("MM-mm-DD-HH-ss", "", at), "09-08-06-10-03");
+});
+
+test("a template needing more digits than the number has is rejected", () => {
+  assert.throws(() => rotation.buildFromTemplate("####", "12"), /needs 4 digits/);
+});
+
+test("currentPayload rebuilds only when a template is set", () => {
+  const at = new Date(Date.UTC(2026, 8, 6, 10, 8, 3));
+  assert.equal(
+    rotation.currentPayload({ payload: "6666000142342395", rotation: null }),
+    "6666000142342395",
+  );
+  assert.equal(
+    rotation.currentPayload(
+      { payload: "1111222233334444", rotation: "YYYY####MM####DD####HH####mmss" },
+      at,
+    ),
     "202611110922220633331044440803",
-    "card digits interleaved with the UTC clock",
   );
-  assert.equal(rules.RULES[0].match(built), "1111222233334444");
-  assert.equal(rules.currentPayload({ payload: "1111222233334444", rule: "amwine-v1" }, at), built);
+  // A template that no longer fits must not render a wrong barcode.
+  assert.equal(rotation.currentPayload({ payload: "12", rotation: "####" }, at), "");
 });
 
-test("the AM Wine rule rejects values that only look like it", () => {
-  assert.equal(rules.RULES[0].match("5555666677778888QR1234567890"), null, "X5");
-  assert.equal(
-    rules.RULES[0].match("1".repeat(30)),
-    null,
-    "month 11, day 11, but hour 11 -> still checked",
-  );
-  assert.equal(rules.RULES[0].match("202699519900230625771047070803"), null, "month 99");
-  assert.equal(rules.RULES[0].match("20269951090023062577"), null, "too short");
-});
-
-test("a card with no rule keeps its stored payload", () => {
-  assert.equal(
-    rules.currentPayload({ payload: "7777000199998888", rule: null }),
-    "7777000199998888",
-  );
-});
-
-test("both samples of each live store are recognised, static cards are not", () => {
-  // Two samples of each: the card number holds while the tail changes completely.
-  for (const [payload, label, number] of [
-    ["P400000000009;000000 111111", "Лента", "400000000009"],
-    ["P400000000009;000000 222222", "Лента", "400000000009"],
-    ["5555666677778888QR1234567890", "X5 Клуб", "5555666677778888"],
-    ["5555666677778888QR0987654321", "X5 Клуб", "5555666677778888"],
-  ]) {
-    const found = rules.detectVolatile(payload);
-    assert.ok(found, payload);
-    assert.equal(found!.store.label, label);
-    assert.equal(found!.number, number);
-  }
-  for (const payload of ["7777000199998888", "1234567890123456789012", "1234567890", ""]) {
-    assert.equal(rules.detectVolatile(payload), null, payload);
-  }
-});
-
-test("looksTimeDerived flags a payload carrying today’s date", () => {
+test("looksTimeDerived flags a payload carrying today\u2019s date", () => {
   const now = new Date(Date.UTC(2026, 8, 6, 10, 0, 0));
-  assert.ok(
-    rules.looksTimeDerived("202611110922220633331044440803", now) === false ||
-      rules.looksTimeDerived("20260906123456", now),
-    "interleaved dates need the rule, not the heuristic",
-  );
-  assert.ok(rules.looksTimeDerived("20260906123456", now), "YYYYMMDD");
-  assert.ok(rules.looksTimeDerived("06092026999", now), "DDMMYYYY");
-  assert.ok(!rules.looksTimeDerived("7777000199998888", now));
-  assert.ok(!rules.looksTimeDerived("1234567890", now));
+  assert.ok(rotation.looksTimeDerived("20260906123456", now), "YYYYMMDD");
+  assert.ok(rotation.looksTimeDerived("06092026999", now), "DDMMYYYY");
+  assert.ok(!rotation.looksTimeDerived("7777000199998888", now));
+  assert.ok(!rotation.looksTimeDerived("1234567890", now));
 });
 
 /* ------------------------------------------------------- QR run rendering  */

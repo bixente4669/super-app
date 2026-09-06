@@ -173,10 +173,24 @@
           <div id="format-gallery" class="gallery"></div>
         </details>
 
-        <label id="rule-row" hidden class="checkbox">
-          <input id="rule" name="rule" type="checkbox" />
-          <span id="rule-label"></span>
-        </label>
+        <label for="rotation">Code pattern <span class="optional">(optional)</span></label>
+        <input
+          id="rotation"
+          name="rotation"
+          type="text"
+          maxlength="120"
+          autocomplete="off"
+          spellcheck="false"
+          autocapitalize="off"
+          placeholder="YYYY####MM####DD####HH####mmss"
+        />
+        <p class="hint">
+          Only if the shop rebuilds its code from the clock. <code>#</code> takes the next digit of
+          the card number, <code>YYYY MM DD HH mm ss</code> are UTC time fields, and anything else
+          is copied as-is. With a pattern set, the field above holds your card number rather than
+          the code. Leave it empty for a code that never changes.
+        </p>
+        <p id="rotation-preview" class="hint"></p>
 
         <label id="live-row" class="checkbox">
           <input id="live" name="live" type="checkbox" />
