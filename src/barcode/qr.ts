@@ -443,3 +443,31 @@ export function encodeQr(text: string, { ecLevel = "M" as EcLevel } = {}): QrSym
   }
   return { size, modules: best!.grid.map((cell) => cell & 1), version, ecLevel };
 }
+
+/**
+ * Internals the decoder needs. Reading a QR is the encoder run backwards, so sharing
+ * these keeps the two from disagreeing: a table copied into both is a table that can
+ * drift.
+ */
+export const QR_INTERNALS = {
+  EC_TABLE,
+  EC_LEVELS,
+  EC_BITS,
+  MASKS,
+  ALIGNMENT,
+  EXP,
+  LOG,
+  multiply,
+  bch,
+  /** One byte per cell, 1 where a function pattern or reserved area sits. */
+  reserved: (version: number): Uint8Array => {
+    const size = 17 + version * 4;
+    const grid = new Uint8Array(size * size);
+    placeFunctionPatterns(grid, size, version);
+    placeVersion(grid, size, version);
+    return grid.map((cell) => (cell & RESERVED ? 1 : 0));
+  },
+  /** Data codewords per block, as [ecPerBlock, blocks1, data1, blocks2, data2]. */
+  spec: (version: number, ecLevel: EcLevel): BlockSpec =>
+    EC_TABLE[version - 1][EC_LEVELS.indexOf(ecLevel)],
+};

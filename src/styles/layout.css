@@ -1,6 +1,12 @@
 /* Page frame: header, main column, and the search and view toolbar. */
 
 header {
+  /* Sticky so the menu is always reachable. `overflow-x: clip` on the root rather
+     than `hidden` is what keeps this working: hidden would make the root a scroll
+     container and strand it. */
+  position: sticky;
+  top: 0;
+  z-index: 5;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -205,5 +211,65 @@ main {
   &.error {
     background: var(--surface);
     color: var(--danger);
+  }
+}
+
+/* Shown when a newer build is installed and waiting to take over. */
+#update-bar {
+  position: fixed;
+  right: 0;
+  bottom: calc(20px + var(--safe-bottom));
+  left: 0;
+  z-index: 11;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  width: max-content;
+  max-width: calc(100% - 32px - var(--safe-left) - var(--safe-right));
+  margin: 0 auto;
+  padding: 12px 14px;
+  border: 3px solid var(--border);
+  background: var(--surface);
+  box-shadow: 6px 6px 0 var(--shadow);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+
+  & button {
+    padding: 7px 12px;
+    min-height: 36px;
+    box-shadow: 3px 3px 0 var(--shadow);
+    font-size: 12px;
+  }
+}
+
+/* Shown when a newer build is installed and waiting to take over. */
+#update-bar {
+  position: fixed;
+  right: 0;
+  bottom: calc(20px + var(--safe-bottom));
+  left: 0;
+  z-index: 11;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  width: max-content;
+  max-width: calc(100% - 32px - var(--safe-left) - var(--safe-right));
+  margin: 0 auto;
+  padding: 12px 14px;
+  border: 3px solid var(--border);
+  background: var(--surface);
+  box-shadow: 6px 6px 0 var(--shadow);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+
+  & button {
+    padding: 7px 12px;
+    min-height: 36px;
+    box-shadow: 3px 3px 0 var(--shadow);
+    font-size: 12px;
   }
 }

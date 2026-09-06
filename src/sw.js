@@ -4,12 +4,14 @@ const CACHE = "super-app-__VERSION__";
 const SHELL = __SHELL__;
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches
-      .open(CACHE)
-      .then((cache) => cache.addAll(SHELL))
-      .then(() => self.skipWaiting()),
-  );
+  // Deliberately no skipWaiting. A worker that takes over on its own swaps the assets
+  // under a page that is already running, and leaves nobody able to tell whether what
+  // is on screen is current. The page asks for the switch when the user agrees to it.
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)));
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data === "skip-waiting") self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {

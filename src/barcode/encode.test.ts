@@ -449,3 +449,51 @@ test("a row with no symbol in it decodes to nothing", () => {
   for (let i = 0; i < noise.length; i += 1) noise[i] = (i * 7919) % 5 === 0 ? 1 : 0;
   assert.equal(decodeRow(noise), null, "noise must not produce a false reading");
 });
+
+/* --------------------------------------------------------------- QR reading */
+
+const { decodeQrGrid } = await import("./qr-decode.js");
+
+test("a QR grid round trips back to its text", () => {
+  const cases = [
+    "1234567890",
+    "7789777317919533",
+    "5555666677778888QR1234567890",
+    "202611110922220633331044440803",
+    "ABC-123 $%*+./:",
+    "https://example.com/café?id=42",
+    "Карта 1234",
+  ];
+  for (const value of cases) {
+    for (const ecLevel of ["L", "M", "Q", "H"] as const) {
+      const symbol = encodeQr(value, { ecLevel });
+      const read = decodeQrGrid(symbol.modules, symbol.size);
+      assert.equal(read, value, `${value} at level ${ecLevel} (v${symbol.version})`);
+    }
+  }
+});
+
+test("error correction recovers a damaged grid", () => {
+  // Level Q corrects about a quarter of the codewords; flip a handful of modules in
+  // the data area and the text must still come back intact.
+  const symbol = encodeQr("7789777317919533", { ecLevel: "Q" });
+  const damaged = symbol.modules.slice();
+  let flipped = 0;
+  // Six scattered modules: within level Q's budget of six wrong codewords.
+  for (let y = 10; y < symbol.size - 9 && flipped < 6; y += 1) {
+    for (let x = 10; x < symbol.size - 9 && flipped < 6; x += 3) {
+      damaged[y * symbol.size + x] ^= 1;
+      flipped += 1;
+    }
+  }
+  assert.ok(flipped > 0, "the test must actually damage the grid");
+  assert.equal(decodeQrGrid(damaged, symbol.size), "7789777317919533");
+});
+
+test("a grid of noise is refused rather than guessed at", () => {
+  const size = 21;
+  const noise = new Uint8Array(size * size);
+  for (let i = 0; i < noise.length; i += 1) noise[i] = (i * 7919) % 3 === 0 ? 1 : 0;
+  assert.equal(decodeQrGrid(noise, size), null);
+  assert.equal(decodeQrGrid(new Uint8Array(20 * 20), 20), null, "not a valid size");
+});

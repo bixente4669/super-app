@@ -51,6 +51,8 @@ const el = {
   importButton: find<HTMLButtonElement>("import"),
   importFile: find<HTMLInputElement>("import-file"),
   version: find("version"),
+  updateBar: find("update-bar"),
+  updateNow: find<HTMLButtonElement>("update-now"),
 
   // Viewer
   viewer: find<HTMLDialogElement>("viewer"),
@@ -111,6 +113,46 @@ let view: "cards" | "list" = "cards";
 let drag: { item: HTMLElement; x: number; y: number; moved: boolean } | null = null;
 const VIEW_KEY = "super-app-view";
 
+/* ------------------------------------------------------------ Scroll locking */
+
+/*
+ * iOS Safari ignores `overflow: hidden` on the body, so the list scrolled underneath
+ * an open dialog and stayed where the drag left it. Pinning the body with a stored
+ * offset is the only approach WebKit honours; the offset is put back on close, so
+ * the list is exactly where it was.
+ */
+let lockedAt = 0;
+
+function lockScroll() {
+  if (document.body.dataset.locked) return;
+  lockedAt = window.scrollY;
+  document.body.dataset.locked = "yes";
+  document.body.style.position = "fixed";
+  document.body.style.top = `-${lockedAt}px`;
+  document.body.style.left = "0";
+  document.body.style.right = "0";
+}
+
+function unlockScroll() {
+  if (!document.body.dataset.locked) return;
+  delete document.body.dataset.locked;
+  document.body.style.position = "";
+  document.body.style.top = "";
+  document.body.style.left = "";
+  document.body.style.right = "";
+  window.scrollTo(0, lockedAt);
+}
+
+/** Opens a dialog with the page behind it held still. */
+function openDialog(dialog: HTMLDialogElement) {
+  lockScroll();
+  dialog.showModal();
+}
+
+for (const dialog of [el.viewer, el.editor, el.settings]) {
+  dialog.addEventListener("close", unlockScroll);
+}
+
 /* -------------------------------------------------------------- Card viewer */
 
 function openViewer(card: Card) {
@@ -137,7 +179,7 @@ function openViewer(card: Card) {
     el.viewer.close();
     openEditor(card);
   };
-  el.viewer.showModal();
+  openDialog(el.viewer);
 }
 
 el.viewer.addEventListener("close", () => {
@@ -390,7 +432,7 @@ function openEditor(card?: Card) {
   el.logoHint.textContent = "";
   showLogo();
   preview();
-  el.editor.showModal();
+  openDialog(el.editor);
   // Deliberately not focusing the name field: on a phone that throws the keyboard up
   // over the form, and the colour and format are just as likely to be the first thing
   // wanted. showModal moves focus into the dialog on its own.
@@ -634,8 +676,16 @@ el.logoClear.addEventListener("click", () => {
   preview();
 });
 
-el.settingsOpen.addEventListener("click", () => el.settings.showModal());
+el.settingsOpen.addEventListener("click", () => openDialog(el.settings));
 el.settingsClose.addEventListener("click", () => el.settings.close());
+
+/*
+ * Tapping outside closes the settings sheet, which holds nothing unsaved. The editor
+ * deliberately does not: a stray tap there would throw away a half-typed card.
+ */
+el.settings.addEventListener("click", (event) => {
+  if (event.target === el.settings) el.settings.close();
+});
 el.add.addEventListener("click", () => openEditor());
 el.close.addEventListener("click", () => el.editor.close());
 el.editor.addEventListener("cancel", (event) => {
@@ -845,21 +895,63 @@ el.dismissHint.addEventListener("click", () => {
   }
 });
 
+/**
+ * Updating a cache-first app has to be visible, or nobody can tell whether what they
+ * are looking at is current. The worker no longer takes over by itself: when a newer
+ * one finishes installing, the page offers to switch and reloads on request.
+ */
+async function watchForUpdates() {
+  const registration = await navigator.serviceWorker.register("./sw.js");
+
+  const offer = (worker: ServiceWorker) => {
+    el.updateBar.hidden = false;
+    el.updateNow.onclick = () => {
+      el.updateNow.disabled = true;
+      worker.postMessage("skip-waiting");
+    };
+  };
+
+  // One may already be waiting from an earlier visit.
+  if (registration.waiting && navigator.serviceWorker.controller) offer(registration.waiting);
+
+  registration.addEventListener("updatefound", () => {
+    const worker = registration.installing;
+    if (!worker) return;
+    worker.addEventListener("statechange", () => {
+      // Without a controller this is the first install, not an update.
+      if (worker.state === "installed" && navigator.serviceWorker.controller) offer(worker);
+    });
+  });
+
+  let reloading = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (reloading) return;
+    reloading = true;
+    window.location.reload();
+  });
+
+  // An installed app can sit for days without a navigation, so check on return.
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") registration.update().catch(() => {});
+  });
+}
+
 if ("serviceWorker" in navigator) {
   if (import.meta.env.PROD) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js").catch(() => {});
+      watchForUpdates().catch(() => {});
     });
   } else {
-    // The worker is emitted by the build only, so in dev that path serves index.html
-    // and registration fails on the MIME type. A worker left over from a production
-    // build would also serve stale files over the dev server, so clear it.
+    // The worker is emitted by the build only, so in dev this path serves index.html
+    // and registration fails on the MIME type. A worker left from a production build
+    // would also serve stale files over the dev server, so clear it.
     navigator.serviceWorker
       .getRegistrations()
       .then((all) => Promise.all(all.map((one) => one.unregister())))
       .catch(() => {});
   }
 }
+
 // Ask to keep the data; Safari ignores this, which is why export exists.
 navigator.storage?.persist?.().catch(() => {});
 
