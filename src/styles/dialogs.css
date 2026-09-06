@@ -7,7 +7,13 @@
   max-height: none;
   margin: 0;
   padding: 0;
+  /*
+   * Scrollable because a large symbol on a short screen has to be reachable, but the
+   * content fits in every ordinary case. A dialog is its own scroll container, so the
+   * root's overscroll rule does not reach it and it would bounce against nothing.
+   */
   overflow: auto;
+  overscroll-behavior: contain;
   border: 0;
   background: var(--bg);
   color: inherit;
