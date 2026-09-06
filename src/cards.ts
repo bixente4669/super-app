@@ -26,8 +26,15 @@ export interface Card {
   color: string;
   /** Manual priority from dragging; ties fall back to name. */
   order: number;
-  /** A small square image for the card face. Stored as a Blob; IndexedDB takes them. */
-  logo: Blob | null;
+  /**
+   * A small square image for the card face, held as a data URL.
+   *
+   * Not a Blob: WebKit keeps a large blob as a backing file and the handle can go
+   * stale, so an object URL made from one read out of IndexedDB resolves to nothing
+   * and the logo renders as a broken image until the app is reopened. A string
+   * cannot go stale.
+   */
+  logo: string | null;
 }
 import { type FormatId, isFormat, suggestFormat } from "./barcode/encode.js";
 
@@ -147,7 +154,7 @@ export function validate(card: Partial<Card>): Card {
     color,
     // Manual priority; cards written before ordering existed share 0 and fall back to name.
     order: Number.isFinite(card.order) ? (card.order as number) : 0,
-    logo: card.logo instanceof Blob ? card.logo : null,
+    logo: typeof card.logo === "string" && card.logo.startsWith("data:image/") ? card.logo : null,
   };
 }
 

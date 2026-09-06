@@ -9,7 +9,7 @@ import { renderBarcode } from "./barcode/render.js";
 
 /** A card being previewed has no id or order yet, so only the drawn parts are needed. */
 type CardLike = Pick<Card, "name" | "payload" | "display" | "color" | "live"> & {
-  logo?: Blob | null;
+  logo?: string | null;
 };
 
 // Choose whichever text colour has the higher WCAG contrast against the background.
@@ -27,31 +27,12 @@ export function paint(element: HTMLElement, color: string) {
   element.style.color = textColor(color);
 }
 
-/**
- * One URL per logo, reused for the life of the page.
- *
- * Revoking on load looked tidy and was wrong: WebKit discards decoded images and
- * re-requests the source when an element is detached and reattached, which the list
- * does on every search keystroke, view toggle and reorder. A revoked URL cannot be
- * refetched, so the image turned into a broken-image glyph. Caching also stops a new
- * URL being minted on each render.
- */
-const logoUrls = new WeakMap<Blob, string>();
-
-export function logoUrl(logo: Blob): string {
-  const existing = logoUrls.get(logo);
-  if (existing) return existing;
-  const url = URL.createObjectURL(logo);
-  logoUrls.set(logo, url);
-  return url;
-}
-
-function logoImage(logo: Blob, className: string): HTMLImageElement {
+function logoImage(logo: string, className: string): HTMLImageElement {
   const image = document.createElement("img");
   image.className = className;
   image.alt = "";
   image.decoding = "async";
-  image.src = logoUrl(logo);
+  image.src = logo;
   return image;
 }
 

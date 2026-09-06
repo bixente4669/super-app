@@ -14,7 +14,7 @@ import {
   looksTimeDerived,
   templateDigits,
 } from "./barcode/rotation.js";
-import { cardFace, logoUrl, paint, renderSymbol, illustratePdf417 } from "./ui.js";
+import { cardFace, paint, renderSymbol, illustratePdf417 } from "./ui.js";
 
 /**
  * Every element the app touches, resolved once. Looking them up per access re-queried
@@ -119,7 +119,7 @@ const el = {
 let editingId: string | null = null;
 /** Set when the payload field holds a card number for a rule, not a raw payload. */
 let formatTouched = false;
-let editingLogo: Blob | null = null;
+let editingLogo: string | null = null;
 let busy = false;
 /** Interval that keeps a rotating code current while the card is on screen. */
 let refresh: ReturnType<typeof setInterval> | undefined;
@@ -228,8 +228,11 @@ el.viewerClose.addEventListener("click", () => el.viewer.close());
 
 /* --------------------------------------------------------- Colour and logo */
 
-/** Downscales to a thumbnail, so a logo costs kilobytes rather than megabytes. */
-async function shrink(blob: Blob, size = 128): Promise<Blob> {
+/**
+ * Downscales to a thumbnail and returns a data URL, so a logo costs kilobytes and
+ * survives a round trip through IndexedDB, which a Blob does not reliably do.
+ */
+async function shrink(blob: Blob, size = 128): Promise<string> {
   const url = URL.createObjectURL(blob);
   try {
     const image = await new Promise<HTMLImageElement>((resolve, reject) => {
@@ -245,13 +248,7 @@ async function shrink(blob: Blob, size = 128): Promise<Blob> {
     canvas.width = Math.max(1, Math.round(image.width * scale));
     canvas.height = Math.max(1, Math.round(image.height * scale));
     canvas.getContext("2d")?.drawImage(image, 0, 0, canvas.width, canvas.height);
-    return await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob(
-        (result) => (result ? resolve(result) : reject(new Error("Could not process that image."))),
-        "image/webp",
-        0.85,
-      );
-    });
+    return canvas.toDataURL("image/webp", 0.85);
   } finally {
     URL.revokeObjectURL(url);
   }
@@ -262,7 +259,7 @@ async function shrink(blob: Blob, size = 128): Promise<Blob> {
  * would tell it which shops you hold cards for, from an app that otherwise never
  * phones home. Most shops refuse cross-origin reads, hence the manual fallback.
  */
-async function fetchLogo(link: string): Promise<Blob> {
+async function fetchLogo(link: string): Promise<string> {
   const origin = new URL(link).origin;
   for (const path of ["/favicon.ico", "/apple-touch-icon.png", "/favicon.png", "/favicon.svg"]) {
     try {
@@ -291,7 +288,7 @@ function showLogo() {
   el.logoClear.hidden = !editingLogo;
   if (!editingLogo) return;
   const image = document.createElement("img");
-  image.src = logoUrl(editingLogo);
+  image.src = editingLogo;
   image.alt = "";
   el.logoPreview.append(image);
 }
@@ -528,8 +525,36 @@ function paintList() {
       : `${allCards.length} ${allCards.length === 1 ? "card" : "cards"}`;
 }
 
+/**
+ * Logos used to be stored as Blobs. Read back out of IndexedDB on WebKit those can go
+ * stale and render as a broken image, so they are converted to data URLs once and
+ * written back. Without this they would simply be dropped on the next save.
+ */
+async function repairLogos(cards: Card[]): Promise<Card[]> {
+  const legacy = cards.filter((card) => (card.logo as unknown) instanceof Blob);
+  if (!legacy.length) return cards;
+  const converted = await Promise.all(
+    legacy.map(async (card) => {
+      const logo = await new Promise<string | null>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : null);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(card.logo as unknown as Blob);
+      });
+      return { ...card, logo };
+    }),
+  );
+  try {
+    await putCards(converted);
+  } catch {
+    // A logo is decoration; failing to rewrite it must not stop the list appearing.
+  }
+  const byId = new Map(converted.map((card) => [card.id, card]));
+  return cards.map((card) => byId.get(card.id) ?? card);
+}
+
 async function render() {
-  allCards = sortCards(await listCards());
+  allCards = sortCards(await repairLogos(await listCards()));
   paintList();
   el.add.disabled = false;
 }
