@@ -27,6 +27,20 @@ function find<T extends HTMLElement>(id: string): T {
   return element as T;
 }
 
+/*
+ * A failure while the module is starting up leaves the page on its initial text with
+ * every control disabled, which looks like a hang and says nothing. Showing what
+ * happened at least makes it reportable, and offers the way out.
+ */
+window.addEventListener("error", (event) => {
+  const message = document.getElementById("message");
+  if (!message || message.dataset.failed) return;
+  message.dataset.failed = "yes";
+  message.textContent =
+    `This version failed to start: ${event.message}. ` +
+    "Reload; if it persists, clear this site's data and import your backup.";
+});
+
 const el = {
   // Shell
   add: find<HTMLButtonElement>("add"),

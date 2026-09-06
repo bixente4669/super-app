@@ -23,11 +23,36 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// Cache first, because a card has to open at the till whatever the signal is like.
-// A background refresh keeps the shell current for the next launch.
+/*
+ * Assets are content-hashed, so cache-first is safe for them and a card opens at the
+ * till whatever the signal is like. Navigations are not: serving a cached index.html
+ * alongside a newer bundle pairs markup with code that expects different markup, and
+ * the app dies on startup. The document is therefore fetched fresh when possible and
+ * only falls back to the cache offline.
+ */
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET" || new URL(request.url).origin !== self.location.origin) return;
+
+  if (request.mode === "navigate") {
+    event.respondWith(
+      (async () => {
+        try {
+          const response = await fetch(request);
+          if (response.ok) await (await caches.open(CACHE)).put(request, response.clone());
+          return response;
+        } catch {
+          return (
+            (await caches.match(request)) ??
+            (await caches.match("./")) ??
+            new Response("Offline and not cached.", { status: 503 })
+          );
+        }
+      })(),
+    );
+    return;
+  }
+
   event.respondWith(
     (async () => {
       const cached = await caches.match(request);
