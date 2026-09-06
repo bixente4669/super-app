@@ -182,8 +182,10 @@ function openViewer(card: Card) {
   const rotating = Boolean(card.rotation);
   el.viewerName.textContent = card.name;
   el.viewerNumber.textContent = card.display || card.payload;
-  el.viewerLink.hidden = !(card.live && card.link);
-  if (card.live && card.link) {
+  // Shown for any card that has one, not just those whose code comes from the shop:
+  // if a barcode will not scan at the till, the shop's own page is the way out.
+  el.viewerLink.hidden = !card.link;
+  if (card.link) {
     el.viewerLink.href = card.link;
     el.viewerLink.textContent = `Open ${new URL(card.link).host}`;
   }
