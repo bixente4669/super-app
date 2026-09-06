@@ -824,9 +824,6 @@ window.addEventListener("beforeinstallprompt", (event) => {
   // Without this Chrome shows its own bar, which cannot explain why installing matters.
   event.preventDefault();
   installPrompt = event;
-  // Injected at build time; see buildVersion in vite.config.ts.
-  el.version.textContent = `Version ${__APP_VERSION__}`;
-
   maybeOfferInstall();
 });
 
@@ -956,6 +953,11 @@ if ("serviceWorker" in navigator) {
 navigator.storage?.persist?.().catch(() => {});
 
 setView(view);
+// Set unconditionally at startup. This previously sat inside the beforeinstallprompt
+// handler, which Chrome fires and Safari never does, so the version was blank on iOS —
+// exactly where knowing the running build matters most.
+el.version.textContent = `Version ${__APP_VERSION__}`;
+
 maybeOfferInstall();
 render().catch(() => {
   el.message.textContent = "Cannot open device storage. Check your browser settings, then reload.";

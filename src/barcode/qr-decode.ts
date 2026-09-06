@@ -19,7 +19,7 @@ const polyEval = (poly: number[], x: number) =>
 
 /** Coefficient-wise XOR, right-aligned so the two need not be the same length. */
 function polyAdd(a: number[], b: number[]): number[] {
-  const out = new Array(Math.max(a.length, b.length)).fill(0);
+  const out = Array.from({ length: Math.max(a.length, b.length) }, () => 0);
   for (let i = 0; i < a.length; i += 1) out[i + out.length - a.length] ^= a[i];
   for (let i = 0; i < b.length; i += 1) out[i + out.length - b.length] ^= b[i];
   return out;
@@ -80,7 +80,7 @@ function correct(block: Uint8Array, ecCount: number): Uint8Array | null {
 
   // Forney: omega = syndromes * sigma truncated to ecCount terms.
   const reversed = [...syndromes].reverse();
-  const product = new Array(reversed.length + sigma.length - 1).fill(0);
+  const product = Array.from({ length: reversed.length + sigma.length - 1 }, () => 0);
   for (let i = 0; i < reversed.length; i += 1) {
     for (let j = 0; j < sigma.length; j += 1) {
       product[i + j] ^= multiply(reversed[i], sigma[j]);
