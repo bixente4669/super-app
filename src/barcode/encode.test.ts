@@ -364,3 +364,43 @@ test("looksTimeDerived flags a payload carrying today’s date", () => {
   assert.ok(!rules.looksTimeDerived("7777000199998888", now));
   assert.ok(!rules.looksTimeDerived("1234567890", now));
 });
+
+/* ------------------------------------------------------- QR run rendering  */
+
+const { qrRuns } = await import("./render.js");
+const { encodeQr } = await import("./qr.js");
+
+test("QR runs never spill past the end of a row", () => {
+  // The grid is a flat array, so merging without a bound check joins the last dark
+  // module of one row to the first of the next and draws a bar overhanging the symbol.
+  for (const value of [
+    "7789777317919533",
+    "5555666677778888QR1234567890",
+    "1234567890",
+    "https://example.com/x",
+  ]) {
+    const symbol = encodeQr(value);
+    for (const run of qrRuns(symbol)) {
+      assert.ok(run.width >= 1, "a run must cover at least one module");
+      assert.ok(
+        run.x + run.width <= symbol.size,
+        `run at row ${run.y} spans ${run.x}..${run.x + run.width} beyond size ${symbol.size} for ${value}`,
+      );
+    }
+  }
+});
+
+test("QR runs cover exactly the dark modules, and nothing else", () => {
+  const symbol = encodeQr("7789777317919533");
+  const painted = new Uint8Array(symbol.size * symbol.size);
+  for (const run of qrRuns(symbol)) {
+    for (let i = 0; i < run.width; i += 1) painted[run.y * symbol.size + run.x + i] = 1;
+  }
+  for (let i = 0; i < symbol.modules.length; i += 1) {
+    assert.equal(
+      painted[i],
+      symbol.modules[i],
+      `module ${i} (${i % symbol.size}, ${Math.floor(i / symbol.size)})`,
+    );
+  }
+});

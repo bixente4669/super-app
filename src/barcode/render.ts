@@ -49,6 +49,30 @@ function linearSvg(symbol: Symbol): SVGSVGElement {
 }
 
 /** QR: one rect per horizontal run of dark modules, which keeps the node count low. */
+/**
+ * Dark modules merged into horizontal runs, which keeps the node count down. Exported
+ * because the merge has to stop at the end of each row: the grid is a flat array, so
+ * a run that does not bound-check spills into the next row and draws a bar hanging off
+ * the right edge of the symbol.
+ * @returns one entry per run, in module coordinates
+ */
+export function qrRuns(symbol: QrSymbol): { x: number; y: number; width: number }[] {
+  const runs: { x: number; y: number; width: number }[] = [];
+  for (let y = 0; y < symbol.size; y += 1) {
+    for (let x = 0; x < symbol.size;) {
+      if (!symbol.modules[y * symbol.size + x]) {
+        x += 1;
+        continue;
+      }
+      let width = 1;
+      while (x + width < symbol.size && symbol.modules[y * symbol.size + x + width]) width += 1;
+      runs.push({ x, y, width });
+      x += width;
+    }
+  }
+  return runs;
+}
+
 function qrSvg(symbol: QrSymbol, text: string): SVGSVGElement {
   const quiet = 4;
   const width = symbol.size + quiet * 2;
@@ -60,19 +84,16 @@ function qrSvg(symbol: QrSymbol, text: string): SVGSVGElement {
     class: "qr",
   });
   svg.append(element("rect", { x: 0, y: 0, width, height: width, fill: "#fff" }));
-  for (let y = 0; y < symbol.size; y += 1) {
-    for (let x = 0; x < symbol.size;) {
-      if (!symbol.modules[y * symbol.size + x]) {
-        x += 1;
-        continue;
-      }
-      let run = 1;
-      while (symbol.modules[y * symbol.size + x + run]) run += 1;
-      svg.append(
-        element("rect", { x: x + quiet, y: y + quiet, width: run, height: 1, fill: "#000" }),
-      );
-      x += run;
-    }
+  for (const run of qrRuns(symbol)) {
+    svg.append(
+      element("rect", {
+        x: run.x + quiet,
+        y: run.y + quiet,
+        width: run.width,
+        height: 1,
+        fill: "#000",
+      }),
+    );
   }
   return svg;
 }
