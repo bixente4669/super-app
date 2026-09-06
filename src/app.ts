@@ -72,6 +72,7 @@ const el = {
   viewer: find<HTMLDialogElement>("viewer"),
   viewerName: find("viewer-name"),
   viewerNumber: find("viewer-number"),
+  viewerCopy: find<HTMLButtonElement>("viewer-copy"),
   viewerNote: find("viewer-note"),
   viewerSymbol: find("viewer-symbol"),
   viewerLink: find<HTMLAnchorElement>("viewer-link"),
@@ -181,7 +182,19 @@ for (const dialog of [el.viewer, el.editor, el.settings]) {
 function openViewer(card: Card) {
   const rotating = Boolean(card.rotation);
   el.viewerName.textContent = card.name;
-  el.viewerNumber.textContent = card.display || card.payload;
+  const shown = card.display || card.payload;
+  el.viewerNumber.textContent = shown;
+  // A shop that will not let its code be stored will still take the number typed in,
+  // so having it on the clipboard beats a trip to their site.
+  el.viewerCopy.hidden = !shown;
+  el.viewerCopy.onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(shown.replace(/\s+/g, ""));
+      toast("Number copied");
+    } catch {
+      toast("Could not copy. Select the number and copy it by hand.", "error");
+    }
+  };
   // Shown for any card that has one, not just those whose code comes from the shop:
   // if a barcode will not scan at the till, the shop's own page is the way out.
   el.viewerLink.hidden = !card.link;

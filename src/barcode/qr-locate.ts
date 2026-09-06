@@ -222,6 +222,38 @@ function orient(finders: Finder[]): [Finder, Finder, Finder] | null {
 }
 
 /**
+ * A module's value by vote across a small window rather than one pixel.
+ *
+ * Stylised codes draw each module as a circle with a gap around it, so the exact
+ * centre is reliable but anything off it is not, and a single misplaced sample flips a
+ * module. Voting over a window about a third of a module wide tolerates that, and the
+ * drift that comes from estimating the grid from three corners.
+ */
+function majority(
+  binary: Uint8Array,
+  width: number,
+  height: number,
+  px: number,
+  py: number,
+  module: number,
+): number {
+  const reach = Math.max(0, Math.min(3, Math.floor(module / 3)));
+  if (reach === 0) return binary[py * width + px];
+  let dark = 0;
+  let total = 0;
+  for (let dy = -reach; dy <= reach; dy += 1) {
+    for (let dx = -reach; dx <= reach; dx += 1) {
+      const x = px + dx;
+      const y = py + dy;
+      if (x < 0 || y < 0 || x >= width || y >= height) continue;
+      dark += binary[y * width + x];
+      total += 1;
+    }
+  }
+  return total > 0 && dark * 2 > total ? 1 : 0;
+}
+
+/**
  * Samples the symbol into a grid of modules.
  *
  * The mapping is affine, built from the three corner centres, which sit at module
@@ -262,8 +294,12 @@ function attempt(
         const ordered = orient([finders[i], finders[j], finders[k]]);
         if (!ordered) continue;
         const [topLeft, topRight, bottomLeft] = ordered;
-        const module = (topLeft.module + topRight.module + bottomLeft.module) / 3;
+        const modules = [topLeft.module, topRight.module, bottomLeft.module];
+        const module = (modules[0] + modules[1] + modules[2]) / 3;
         if (module < 1) continue;
+        // Three corners of one symbol measure the same module. A triple that disagrees
+        // is a real corner plus something that merely looked like one.
+        if (Math.max(...modules) > Math.min(...modules) * 1.4) continue;
         const across = Math.hypot(topRight.x - topLeft.x, topRight.y - topLeft.y);
         const down = Math.hypot(bottomLeft.x - topLeft.x, bottomLeft.y - topLeft.y);
         // The two sides must match: a QR is square.
@@ -290,7 +326,7 @@ function attempt(
               plausible = false;
               break;
             }
-            grid[y * size + x] = binary[py * width + px];
+            grid[y * size + x] = majority(binary, width, height, px, py, module);
           }
         }
         if (plausible) return { grid, size };
