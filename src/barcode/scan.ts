@@ -8,6 +8,8 @@
  * barcode held sideways is the normal case, not the exception.
  */
 import { type Decoded, decodeRow } from "./decode.js";
+import { decodeQrGrid } from "./qr-decode.js";
+import { locateQr } from "./qr-locate.js";
 
 /** Longest edge the scan works at. Bigger costs time and buys nothing. */
 const MAX_EDGE = 1400;
@@ -137,8 +139,23 @@ export async function scanImage(file: Blob): Promise<Decoded | null> {
 
   const data = context.getImageData(0, 0, canvas.width, canvas.height);
   const grey = toGrey(data);
-  return (
-    scanGrey(grey, canvas.width, canvas.height) ??
-    scanGrey(rotate(grey, canvas.width, canvas.height), canvas.height, canvas.width)
-  );
+  const rotated = rotate(grey, canvas.width, canvas.height);
+
+  const linear =
+    scanGrey(grey, canvas.width, canvas.height) ?? scanGrey(rotated, canvas.height, canvas.width);
+  if (linear) return linear;
+
+  // QR last: it costs a pass over the whole image, where a bar code needs one row.
+  // Orientation does not matter to the corner squares, but binarisation of a rotated
+  // frame can differ, so both are worth trying.
+  for (const [pixels, w, h] of [
+    [grey, canvas.width, canvas.height],
+    [rotated, canvas.height, canvas.width],
+  ] as const) {
+    const located = locateQr(pixels, w, h);
+    if (!located) continue;
+    const text = decodeQrGrid(located.grid, located.size);
+    if (text) return { format: "qr", text };
+  }
+  return null;
 }

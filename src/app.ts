@@ -663,7 +663,7 @@ el.logoFetch.addEventListener("click", async () => {
 });
 
 el.rotationExample.addEventListener("click", () => {
-  el.rotation.value = "YYYY####MM####DD####HH####mmss";
+  el.rotation.value = "b64:YYYY####MM####DD####HH####mmss";
   preview();
   el.rotation.focus();
 });

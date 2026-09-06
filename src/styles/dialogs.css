@@ -124,6 +124,10 @@ dialog#settings {
   width: min(440px, calc(100% - 40px));
   max-height: calc(100dvh - 40px - var(--safe-top) - var(--safe-bottom));
   overflow: auto;
+  /* A dialog is its own scroll container, so the root's rule never reaches it and a
+     scroll gesture ran on through to the page behind. */
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   border: 4px solid var(--border);
   box-shadow: 8px 8px 0 var(--shadow);
   background: var(--surface);

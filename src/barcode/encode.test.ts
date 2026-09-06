@@ -497,3 +497,19 @@ test("a grid of noise is refused rather than guessed at", () => {
   assert.equal(decodeQrGrid(noise, size), null);
   assert.equal(decodeQrGrid(new Uint8Array(20 * 20), 20), null, "not a valid size");
 });
+
+test("a b64: pattern encodes its whole result", async () => {
+  const rot = await import("./rotation.js");
+  const at = new Date(Date.UTC(2026, 8, 6, 10, 8, 3));
+  const plain = rot.buildFromTemplate("YYYY####MM####DD####HH####mmss", "1111222233334444", at);
+  const encoded = rot.buildFromTemplate(
+    "b64:YYYY####MM####DD####HH####mmss",
+    "1111222233334444",
+    at,
+  );
+  assert.equal(encoded, btoa(plain), "the prefix wraps the expanded result");
+  assert.equal(atob(encoded), "202611110922220633331044440803");
+  // The marker must not be counted as literal text or as digit slots.
+  assert.equal(rot.templateDigits("b64:####"), 4);
+  assert.equal(rot.buildFromTemplate("b64:HH", "", at), btoa("10"));
+});

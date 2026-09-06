@@ -8,6 +8,9 @@
  *   #                    the next digit of the card number
  *   anything else        copied through as a literal
  *
+ * A leading `b64:` base64-encodes everything the rest of the pattern produces, which
+ * is what some shops put in the code rather than the plain text.
+ *
  * A code interleaving the card number with the UTC clock, for instance, is
  * `YYYY####MM####DD####HH####mmss`.
  */
@@ -24,6 +27,9 @@ const FIELDS: [string, (now: Date) => string][] = [
 ];
 
 /** How many card-number digits a template consumes, so it can be checked against one. */
+/** A pattern starting with this has its whole result base64-encoded. */
+const BASE64 = "b64:";
+
 export function templateDigits(template: string): number {
   return [...template].filter((character) => character === "#").length;
 }
@@ -37,6 +43,12 @@ export function buildFromTemplate(
   number: string,
   now: Date = new Date(),
 ): string {
+  const encode = template.startsWith(BASE64);
+  const built = expand(encode ? template.slice(BASE64.length) : template, number, now);
+  return encode ? btoa(built) : built;
+}
+
+function expand(template: string, number: string, now: Date): string {
   const digits = number.replace(/\D/g, "");
   const needed = templateDigits(template);
   if (needed > digits.length) {
