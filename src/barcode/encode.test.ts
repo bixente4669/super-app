@@ -538,3 +538,26 @@ test("an expiring payload is spotted even when base64 hides the date", async () 
   assert.ok(!rot.looksTimeDerived("7777000199998888", now));
   assert.ok(!rot.looksTimeDerived(btoa("7777000199998888"), now));
 });
+
+test("a shop link may be typed without its scheme", async () => {
+  const { validate } = await import("../cards.js");
+  const base = {
+    id: "x",
+    name: "Shop",
+    payload: "1234567890",
+    format: "qr" as const,
+    display: "",
+    rotation: null,
+    live: false,
+    color: "#ff2d87",
+    order: 0,
+    logo: null,
+  };
+  assert.equal(validate({ ...base, link: "av.ru" }).link, "https://av.ru");
+  assert.equal(validate({ ...base, link: " metro-cc.ru " }).link, "https://metro-cc.ru");
+  assert.equal(validate({ ...base, link: "https://lenta.com" }).link, "https://lenta.com");
+  assert.equal(validate({ ...base, link: "" }).link, "");
+  // Anything with another scheme is refused rather than quietly prefixed.
+  assert.throws(() => validate({ ...base, link: "http://av.ru" }), /https/);
+  assert.throws(() => validate({ ...base, link: "javascript:alert(1)" }), /https/);
+});

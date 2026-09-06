@@ -100,22 +100,18 @@
   text-align: center;
 }
 
+/* A link, not a button. It is a fallback for when the code will not scan, so it
+   should sit quietly under the card rather than compete with it. */
 .viewer-link {
-  display: inline-block;
-  padding: 13px 20px;
-  min-height: 48px;
-  border: 3px solid var(--border);
-  background: var(--accent);
-  box-shadow: 4px 4px 0 var(--shadow);
-  color: #fff;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-decoration: none;
-  text-transform: uppercase;
+  padding: 6px 4px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 
   &:hover {
-    transform: translate(2px, 2px);
-    box-shadow: 2px 2px 0 var(--shadow);
+    color: var(--text);
   }
 }
 

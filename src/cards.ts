@@ -128,10 +128,13 @@ export function validate(card: Partial<Card>): Card {
   if (payload.length > 2000) throw new Error("That card number is too long.");
   if (!isFormat(format)) throw new Error("Choose a barcode format.");
   if (!/^#[0-9a-f]{6}$/i.test(color)) throw new Error("Choose a valid colour.");
-  const link = (card.link ?? "").trim();
-  // Only https, so a stored card can never carry a javascript: URL into the viewer.
-  if (link && !/^https:\/\/[^\s]+$/i.test(link))
-    throw new Error("The link must start with https://");
+  // A bare host is what anyone actually types, so the scheme is filled in. Only https
+  // is accepted, so a stored card can never carry a javascript: URL into the viewer.
+  const typed = (card.link ?? "").trim();
+  const link = typed && !/^[a-z][\w+.-]*:/i.test(typed) ? `https://${typed}` : typed;
+  if (link && !/^https:\/\/[^\s]+$/i.test(link)) {
+    throw new Error("That link must be an https:// address.");
+  }
   return {
     id,
     name: name.trim(),
