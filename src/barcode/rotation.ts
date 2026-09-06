@@ -53,7 +53,8 @@ function expand(template: string, number: string, now: Date): string {
   const needed = templateDigits(template);
   if (needed > digits.length) {
     throw new Error(
-      `That pattern needs ${needed} digits from the card number, which has ${digits.length}.`,
+      `That pattern needs ${needed} digits, but the field above has ${digits.length}. ` +
+        "With a pattern set, that field holds your card number rather than the code itself.",
     );
   }
   let out = "";
@@ -81,19 +82,52 @@ function expand(template: string, number: string, now: Date): string {
 /**
  * A payload that embeds today's date is very likely to expire. This is a shape test,
  * not a list of shops: it knows nothing beyond the current date.
+ *
+ * Base64 is looked through as well, because a code can bury its timestamp that way and
+ * then read as harmless text — which is exactly how one shop's does.
  */
 export function looksTimeDerived(payload: string, now: Date = new Date()): boolean {
+  if (stampedWithToday(payload, now)) return true;
+  const decoded = fromBase64(payload);
+  return decoded !== null && stampedWithToday(decoded, now);
+}
+
+/** The decoded text if `value` is plausible base64 of printable characters, else null. */
+function fromBase64(value: string): string | null {
+  const trimmed = value.trim();
+  if (trimmed.length < 8 || trimmed.length % 4 !== 0) return null;
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(trimmed)) return null;
+  try {
+    const decoded = atob(trimmed);
+    // Reject binary: a payload worth warning about is text a shop could have printed.
+    return /^[\x20-\x7e]+$/.test(decoded) ? decoded : null;
+  } catch {
+    return null;
+  }
+}
+
+function stampedWithToday(payload: string, now: Date): boolean {
   const digits = payload.replace(/\D/g, "");
   if (digits.length < 8) return false;
   const year = String(now.getUTCFullYear());
   const month = pad(now.getUTCMonth() + 1);
   const day = pad(now.getUTCDate());
-  return [
+  const contiguous = [
     `${year}${month}${day}`,
     `${day}${month}${year}`,
     `${year}${month}`,
     `${day}${month}${year.slice(2)}`,
   ].some((stamp) => digits.includes(stamp));
+  if (contiguous) return true;
+  /*
+   * A date need not be contiguous. One shop's code opens with the year and then
+   * interleaves the rest of the clock between groups of the card number, which no
+   * substring search finds. Leading with the current year is signal enough: a card
+   * number that happens to start with it is possible but rare, and the cost of a
+   * false warning is a sentence suggesting the code be checked tomorrow, while the
+   * cost of missing one is a card that quietly stops working.
+   */
+  return digits.startsWith(year) && digits.length >= 12;
 }
 
 /** The payload to show: rebuilt from the template when there is one, else as stored. */

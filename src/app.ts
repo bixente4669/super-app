@@ -84,6 +84,7 @@ const el = {
   form: find<HTMLFormElement>("card-form"),
   name: find<HTMLInputElement>("name"),
   payload: find<HTMLInputElement>("payload"),
+  payloadLabel: find("payload-label"),
   scan: find<HTMLButtonElement>("scan"),
   scanFile: find<HTMLInputElement>("scan-file"),
   scanStatus: find("scan-status"),
@@ -301,6 +302,8 @@ function effectivePayload() {
 /** Shows what the pattern currently produces, so it can be checked against the shop. */
 function refreshRotation() {
   const template = el.rotation.value.trim();
+  // With a pattern, that field holds the number the pattern draws from, not the code.
+  el.payloadLabel.textContent = template ? "Card number" : "Barcode contents";
   if (!template) {
     el.rotationPreview.textContent = "";
     return;

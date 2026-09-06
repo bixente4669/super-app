@@ -513,3 +513,28 @@ test("a b64: pattern encodes its whole result", async () => {
   assert.equal(rot.templateDigits("b64:####"), 4);
   assert.equal(rot.buildFromTemplate("b64:HH", "", at), btoa("10"));
 });
+
+test("an expiring payload is spotted even when base64 hides the date", async () => {
+  const rot = await import("./rotation.js");
+  const now = new Date(Date.UTC(2026, 8, 6, 10, 8, 3));
+  const interleaved = rot.buildFromTemplate(
+    "YYYY####MM####DD####HH####mmss",
+    "9951002325774707",
+    now,
+  );
+  assert.ok(
+    rot.looksTimeDerived(interleaved, now),
+    "an interleaved date, caught by the leading year",
+  );
+  assert.ok(
+    rot.looksTimeDerived(btoa(interleaved), now),
+    "and the same through base64, as a scan delivers it",
+  );
+  // Plain stamps are still caught directly.
+  assert.ok(rot.looksTimeDerived("20260906123456", now));
+  // And through base64, which is how a scan of one shop's code arrives.
+  assert.ok(rot.looksTimeDerived(btoa("order 20260906 ref 42"), now));
+  // Ordinary card numbers must not trip it, base64-shaped or not.
+  assert.ok(!rot.looksTimeDerived("7777000199998888", now));
+  assert.ok(!rot.looksTimeDerived(btoa("7777000199998888"), now));
+});
