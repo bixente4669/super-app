@@ -110,7 +110,15 @@ let refresh: ReturnType<typeof setInterval> | undefined;
 let editingOrder = 0;
 let allCards: Card[] = [];
 let view: "cards" | "list" = "cards";
-let drag: { item: HTMLElement; x: number; y: number; moved: boolean } | null = null;
+let drag: {
+  item: HTMLElement;
+  x: number;
+  y: number;
+  /** Layout displacement accumulated from reordering, compensated out of the transform. */
+  shiftX: number;
+  shiftY: number;
+  moved: boolean;
+} | null = null;
 const VIEW_KEY = "super-app-view";
 
 /* ------------------------------------------------------------ Scroll locking */
@@ -520,30 +528,55 @@ el.cards.addEventListener("pointerdown", (event) => {
   if (!handle || !item || event.button > 0 || el.cards.classList.contains("locked")) return;
   event.preventDefault();
   handle.setPointerCapture(event.pointerId);
-  drag = { item, x: event.clientX, y: event.clientY, moved: false };
+  drag = { item, x: event.clientX, y: event.clientY, shiftX: 0, shiftY: 0, moved: false };
   item.classList.add("dragging");
 });
 
+/**
+ * Where the dragged card should be inserted, given the pointer. Measured against the
+ * other cards' layout boxes, which are untransformed and therefore trustworthy.
+ *
+ * A single column is decided purely by the vertical midpoint. Comparing horizontally
+ * there is what stopped a card ever reaching the top: the handle sits on the right, so
+ * the pointer was never in a card's left half and the test never fired.
+ *
+ * @returns the card to insert before, or null to place it last
+ */
+function insertionPoint(x: number, y: number): Element | null {
+  const others = [...el.cards.children].filter((node) => node !== drag?.item);
+  const boxes = others.map((node) => [node, node.getBoundingClientRect()] as const);
+  const multiColumn = boxes.some(([, a], i) =>
+    boxes.some(([, b], j) => i !== j && Math.abs(a.top - b.top) < 2),
+  );
+  for (const [node, box] of boxes) {
+    if (multiColumn) {
+      if (y < box.top) return node;
+      if (y <= box.bottom && x < box.left + box.width / 2) return node;
+    } else if (y < box.top + box.height / 2) {
+      return node;
+    }
+  }
+  return null;
+}
+
 el.cards.addEventListener("pointermove", (event) => {
   if (!drag) return;
-  drag.item.style.transform = `translate(${event.clientX - drag.x}px, ${event.clientY - drag.y}px)`;
-  const under = document.elementFromPoint(event.clientX, event.clientY)?.closest(".card, .row");
-  if (!under || under === drag.item || under.parentElement !== drag.item.parentElement) return;
-  const box = under.getBoundingClientRect();
-  const self = drag.item.getBoundingClientRect();
-  // Compare horizontally only when the two share a row, which in a one-column grid
-  // never happens. Testing x unconditionally meant a drag upward still counted as
-  // "after", because the handle sits on the right and carries the pointer with it.
-  const sameRow = Math.abs(box.top - self.top) < box.height / 2;
-  const after = sameRow
-    ? event.clientX > box.left + box.width / 2
-    : event.clientY > box.top + box.height / 2;
-  under.parentElement?.insertBefore(drag.item, after ? under.nextSibling : under);
-  // Re-anchor to the new position so the element does not jump away from the finger.
-  drag.x = event.clientX;
-  drag.y = event.clientY;
-  drag.item.style.transform = "";
-  drag.moved = true;
+  const reference = insertionPoint(event.clientX, event.clientY);
+  if (reference !== drag.item && reference !== drag.item.nextElementSibling) {
+    /*
+     * Reordering moves the card in the layout, which would jerk it out from under the
+     * finger. Measuring before and after and folding the difference into the offset
+     * keeps it exactly where it is on screen: the DOM changes, the pixels do not.
+     */
+    drag.item.style.transform = "";
+    const before = drag.item.getBoundingClientRect();
+    el.cards.insertBefore(drag.item, reference);
+    const after = drag.item.getBoundingClientRect();
+    drag.shiftX += after.left - before.left;
+    drag.shiftY += after.top - before.top;
+    drag.moved = true;
+  }
+  drag.item.style.transform = `translate(${event.clientX - drag.x - drag.shiftX}px, ${event.clientY - drag.y - drag.shiftY}px)`;
 });
 
 async function endDrag() {

@@ -153,19 +153,24 @@
 
 .handle {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 38px;
-  height: 38px;
+  top: 8px;
+  right: 8px;
+  /* Centred properly: the glyph's own metrics do not sit in the middle of its box. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
   min-height: 0;
   padding: 0;
-  border: 3px solid currentcolor;
+  /* No border. The grip reads as a grip; a heavy box around it only added noise. */
+  border: 0;
   background: transparent;
   box-shadow: none;
   color: inherit;
-  font-size: 15px;
+  font-size: 19px;
   line-height: 1;
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: grab;
   /* Without this the browser scrolls instead of letting the drag through. */
   touch-action: none;
