@@ -14,7 +14,7 @@ import {
   looksTimeDerived,
   templateDigits,
 } from "./barcode/rotation.js";
-import { cardFace, paint, renderSymbol, illustratePdf417 } from "./ui.js";
+import { cardFace, logoUrl, paint, renderSymbol, illustratePdf417 } from "./ui.js";
 
 /**
  * Every element the app touches, resolved once. Looking them up per access re-queried
@@ -211,10 +211,8 @@ function showLogo() {
   el.logoClear.hidden = !editingLogo;
   if (!editingLogo) return;
   const image = document.createElement("img");
-  const url = URL.createObjectURL(editingLogo);
-  image.src = url;
+  image.src = logoUrl(editingLogo);
   image.alt = "";
-  image.addEventListener("load", () => URL.revokeObjectURL(url), { once: true });
   el.logoPreview.append(image);
 }
 

@@ -28,18 +28,30 @@ export function paint(element: HTMLElement, color: string) {
 }
 
 /**
- * Object URLs are revoked when the element leaves the document, so a long list does
- * not accumulate them. Without this every re-render would leak one per card.
+ * One URL per logo, reused for the life of the page.
+ *
+ * Revoking on load looked tidy and was wrong: WebKit discards decoded images and
+ * re-requests the source when an element is detached and reattached, which the list
+ * does on every search keystroke, view toggle and reorder. A revoked URL cannot be
+ * refetched, so the image turned into a broken-image glyph. Caching also stops a new
+ * URL being minted on each render.
  */
+const logoUrls = new WeakMap<Blob, string>();
+
+export function logoUrl(logo: Blob): string {
+  const existing = logoUrls.get(logo);
+  if (existing) return existing;
+  const url = URL.createObjectURL(logo);
+  logoUrls.set(logo, url);
+  return url;
+}
+
 function logoImage(logo: Blob, className: string): HTMLImageElement {
   const image = document.createElement("img");
   image.className = className;
   image.alt = "";
   image.decoding = "async";
-  const url = URL.createObjectURL(logo);
-  image.src = url;
-  image.addEventListener("load", () => URL.revokeObjectURL(url), { once: true });
-  image.addEventListener("error", () => URL.revokeObjectURL(url), { once: true });
+  image.src = logoUrl(logo);
   return image;
 }
 
