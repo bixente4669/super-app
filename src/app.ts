@@ -78,6 +78,8 @@ const el = {
   live: find<HTMLInputElement>("live"),
   rotation: find<HTMLInputElement>("rotation"),
   rotationPreview: find("rotation-preview"),
+  rotationHelp: find<HTMLDetailsElement>("rotation-help"),
+  rotationExample: find<HTMLButtonElement>("rotation-example"),
   cardPreview: find("card-preview"),
   previewSymbol: find("preview-symbol"),
   previewError: find("preview-error"),
@@ -373,6 +375,8 @@ function openEditor(card?: Card) {
   el.link.value = card?.link ?? "";
   el.live.checked = Boolean(card?.live);
   el.rotation.value = card?.rotation ?? "";
+  // Opened only when this card actually uses a pattern, so it stays out of the way.
+  el.rotationHelp.open = Boolean(card?.rotation);
   el.deleteButton.hidden = !card;
   el.formError.textContent = "";
   el.logoHint.textContent = "";
@@ -555,6 +559,12 @@ el.logoFetch.addEventListener("click", async () => {
   } catch (error) {
     el.logoHint.textContent = error instanceof Error ? error.message : String(error);
   }
+});
+
+el.rotationExample.addEventListener("click", () => {
+  el.rotation.value = "YYYY####MM####DD####HH####mmss";
+  preview();
+  el.rotation.focus();
 });
 
 el.logoPick.addEventListener("click", () => el.logoFile.click());

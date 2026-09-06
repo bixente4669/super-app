@@ -321,3 +321,62 @@ body:has(dialog[open]) {
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* The pattern is folded away: almost no card needs one, and the syntax is off-putting
+   when it confronts everybody by default. */
+#rotation-help {
+  margin: 18px 0 0;
+  border: 3px solid var(--border);
+  background: var(--surface);
+
+  & summary {
+    padding: 12px 14px;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 4px solid var(--accent);
+      outline-offset: -4px;
+    }
+  }
+}
+
+.rotation-body {
+  padding: 0 14px 14px;
+
+  & label {
+    margin-top: 14px;
+  }
+
+  & button {
+    margin-top: 10px;
+    padding: 8px 12px;
+    min-height: 38px;
+    font-size: 12px;
+  }
+}
+
+.legend {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 12px;
+  margin: 12px 0 0;
+  font-size: 13px;
+
+  & dt {
+    font:
+      700 13px ui-monospace,
+      monospace;
+    color: var(--text);
+    white-space: nowrap;
+  }
+
+  & dd {
+    margin: 0;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+}

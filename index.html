@@ -173,24 +173,39 @@
           <div id="format-gallery" class="gallery"></div>
         </details>
 
-        <label for="rotation">Code pattern <span class="optional">(optional)</span></label>
-        <input
-          id="rotation"
-          name="rotation"
-          type="text"
-          maxlength="120"
-          autocomplete="off"
-          spellcheck="false"
-          autocapitalize="off"
-          placeholder="YYYY####MM####DD####HH####mmss"
-        />
-        <p class="hint">
-          Only if the shop rebuilds its code from the clock. <code>#</code> takes the next digit of
-          the card number, <code>YYYY MM DD HH mm ss</code> are UTC time fields, and anything else
-          is copied as-is. With a pattern set, the field above holds your card number rather than
-          the code. Leave it empty for a code that never changes.
-        </p>
-        <p id="rotation-preview" class="hint"></p>
+        <details id="rotation-help">
+          <summary>Does this code change by itself?</summary>
+          <div class="rotation-body">
+            <p class="hint">
+              Almost no card needs this. A few shops rebuild their code from the current time, so a
+              saved copy stops scanning within minutes. If yours does, describe how it is put
+              together and it will be rebuilt fresh every time you open the card.
+            </p>
+            <dl class="legend">
+              <dt>#</dt>
+              <dd>the next digit of your card number</dd>
+              <dt>YYYY MM DD</dt>
+              <dd>year, month, day (UTC)</dd>
+              <dt>HH mm ss</dt>
+              <dd>hour, minute, second (UTC)</dd>
+              <dt>anything else</dt>
+              <dd>copied exactly as written</dd>
+            </dl>
+            <label for="rotation">Pattern</label>
+            <input
+              id="rotation"
+              name="rotation"
+              type="text"
+              maxlength="120"
+              autocomplete="off"
+              spellcheck="false"
+              autocapitalize="off"
+              placeholder="Leave empty for most cards"
+            />
+            <button id="rotation-example" type="button" class="secondary">Insert an example</button>
+            <p id="rotation-preview" class="hint"></p>
+          </div>
+        </details>
 
         <label id="live-row" class="checkbox">
           <input id="live" name="live" type="checkbox" />
