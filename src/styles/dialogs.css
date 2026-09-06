@@ -85,7 +85,29 @@
   }
 }
 
+/* The number doubles as a copy control: a shop that refuses a stored code will still
+   take it typed in, and reading it aloud beats opening their site. It must not look
+   like a button, so the global button styling is undone here. */
+button.viewer-number {
+  padding: 8px 12px;
+  min-height: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+
+  &:hover:not(:disabled),
+  &:active:not(:disabled) {
+    transform: none;
+    box-shadow: none;
+    opacity: 0.65;
+  }
+}
+
 #viewer-number {
+  display: block;
   margin: 0;
   overflow-wrap: anywhere;
   font:
