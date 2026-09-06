@@ -67,7 +67,6 @@ const el = {
   link: find<HTMLInputElement>("link"),
   color: find<HTMLInputElement>("color"),
   colorValue: find<HTMLOutputElement>("color-value"),
-  swatches: find("swatches"),
   logoPreview: find("logo-preview"),
   logoFetch: find<HTMLButtonElement>("logo-fetch"),
   logoPick: find<HTMLButtonElement>("logo-pick"),
@@ -143,32 +142,6 @@ el.viewerClose.addEventListener("click", () => el.viewer.close());
 
 /* --------------------------------------------------------- Colour and logo */
 
-/*
- * A fixed palette rather than only the native picker: one tap applies a colour with
- * no sheet to dismiss, and the contrast helper picks readable text for any of them.
- * The native input stays for anything not in the list.
- */
-const SWATCHES = [
-  "#ff2d87",
-  "#e63946",
-  "#f4801a",
-  "#ffd23f",
-  "#a3e635",
-  "#0e9d7f",
-  "#0891b2",
-  "#1f3a93",
-  "#003d7d",
-  "#7c3aed",
-  "#92400e",
-  "#1a1618",
-];
-
-const markSwatches = (color: string) => {
-  for (const swatch of el.swatches.children as HTMLCollectionOf<HTMLElement>) {
-    swatch.setAttribute("aria-pressed", String(swatch.dataset.color === color.toLowerCase()));
-  }
-};
-
 /** Downscales to a thumbnail, so a logo costs kilobytes rather than megabytes. */
 async function shrink(blob: Blob, size = 128): Promise<Blob> {
   const url = URL.createObjectURL(blob);
@@ -218,6 +191,13 @@ async function fetchLogo(link: string): Promise<Blob> {
   throw new Error(
     "This shop does not let its icon be read from another site. Choose an image instead.",
   );
+}
+
+/** There is no lookup table of shops: the origin comes from whatever link is typed. */
+function syncLogoFetch() {
+  const link = el.link.value.trim();
+  el.logoFetch.disabled = !link;
+  el.logoFetch.title = link ? `Try ${link}` : "Add the shop link first";
 }
 
 function showLogo() {
@@ -360,7 +340,7 @@ function preview() {
   };
   el.cardPreview.replaceChildren(cardFace(draft, { interactive: false }));
   paint(el.cardPreview, color);
-  markSwatches(color);
+  syncLogoFetch();
 
   if (el.live.checked) {
     el.ruleRow.hidden = true;
@@ -574,27 +554,9 @@ function setBusy(value: boolean) {
 
 /* ----------------------------------------------------------------- Wiring   */
 
-for (const value of SWATCHES) {
-  const swatch = document.createElement("button");
-  swatch.type = "button";
-  swatch.className = "swatch-option";
-  swatch.dataset.color = value;
-  swatch.style.backgroundColor = value;
-  swatch.title = value;
-  swatch.setAttribute("aria-label", `Colour ${value}`);
-  swatch.addEventListener("click", () => {
-    el.color.value = value;
-    preview();
-  });
-  el.swatches.append(swatch);
-}
-
 el.logoFetch.addEventListener("click", async () => {
   const link = el.link.value.trim();
-  if (!link) {
-    el.logoHint.textContent = "Add the shop link first, then this can try its icon.";
-    return;
-  }
+  if (!link) return;
   el.logoHint.textContent = "Looking for the shop\u2019s icon\u2026";
   try {
     editingLogo = await fetchLogo(link);

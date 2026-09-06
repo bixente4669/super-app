@@ -282,35 +282,6 @@ body:has(dialog[open]) {
   }
 }
 
-/*
- * Quick swatches sit alongside the native colour input, which is deliberately kept:
- * the system picker gives the full range, these just save a trip through it.
- */
-.swatches {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(38px, 1fr));
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.swatch-option {
-  min-height: 38px;
-  padding: 0;
-  border: 3px solid var(--border);
-  box-shadow: none;
-
-  &:hover:not(:disabled),
-  &:active:not(:disabled) {
-    transform: none;
-    box-shadow: none;
-  }
-
-  &[aria-pressed="true"] {
-    outline: 4px solid var(--accent);
-    outline-offset: -8px;
-  }
-}
-
 .logo-row {
   display: flex;
   align-items: flex-start;
@@ -343,4 +314,10 @@ body:has(dialog[open]) {
     min-height: 38px;
     font-size: 12px;
   }
+}
+
+/* Disabled until a shop link exists, since the origin is derived from it. */
+.logo-actions button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
