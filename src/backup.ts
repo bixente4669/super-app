@@ -7,13 +7,42 @@ import { listCards, putCards } from "./cards.js";
 const FORMAT = "super-app-cards";
 const VERSION = 1;
 
+/** JSON cannot hold a Blob, so a logo travels as a data URL. */
+const toDataUrl = (blob: Blob) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const { result } = reader;
+      // readAsDataURL always yields a string, but the type allows an ArrayBuffer.
+      if (typeof result === "string") resolve(result);
+      else reject(new Error("Could not read the logo."));
+    };
+    reader.onerror = () => reject(reader.error ?? new Error("Could not read the logo."));
+    reader.readAsDataURL(blob);
+  });
+
+async function fromDataUrl(value: unknown): Promise<Blob | null> {
+  if (typeof value !== "string" || !value.startsWith("data:image/")) return null;
+  try {
+    return await (await fetch(value)).blob();
+  } catch {
+    // A corrupt logo is not worth failing an import over; the card still works.
+    return null;
+  }
+}
+
 export async function buildBackup() {
   const cards = await listCards();
   return {
     format: FORMAT,
     version: VERSION,
     exportedAt: new Date().toISOString(),
-    cards,
+    cards: await Promise.all(
+      cards.map(async (card) => ({
+        ...card,
+        logo: card.logo ? await toDataUrl(card.logo) : null,
+      })),
+    ),
   };
 }
 
@@ -65,6 +94,12 @@ export async function importCards(file: File): Promise<number> {
     throw new Error("That backup was written by a newer version of this app.");
   }
   if (!backup.cards.length) throw new Error("That backup has no cards in it.");
-  await putCards(backup.cards);
-  return backup.cards.length;
+  const cards = await Promise.all(
+    backup.cards.map(async (card: Record<string, unknown>) => ({
+      ...card,
+      logo: await fromDataUrl(card.logo),
+    })),
+  );
+  await putCards(cards);
+  return cards.length;
 }

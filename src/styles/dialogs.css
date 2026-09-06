@@ -281,3 +281,66 @@ body:has(dialog[open]) {
     width: calc(100% - 28px);
   }
 }
+
+/*
+ * Quick swatches sit alongside the native colour input, which is deliberately kept:
+ * the system picker gives the full range, these just save a trip through it.
+ */
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(38px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.swatch-option {
+  min-height: 38px;
+  padding: 0;
+  border: 3px solid var(--border);
+  box-shadow: none;
+
+  &:hover:not(:disabled),
+  &:active:not(:disabled) {
+    transform: none;
+    box-shadow: none;
+  }
+
+  &[aria-pressed="true"] {
+    outline: 4px solid var(--accent);
+    outline-offset: -8px;
+  }
+}
+
+.logo-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.logo-preview {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border: 3px solid var(--input-border);
+  background: var(--surface);
+
+  & img {
+    max-width: 100%;
+    max-height: 100%;
+  }
+}
+
+.logo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  & button {
+    padding: 8px 12px;
+    min-height: 38px;
+    font-size: 12px;
+  }
+}

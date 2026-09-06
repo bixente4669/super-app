@@ -67,6 +67,13 @@ const el = {
   link: find<HTMLInputElement>("link"),
   color: find<HTMLInputElement>("color"),
   colorValue: find<HTMLOutputElement>("color-value"),
+  swatches: find("swatches"),
+  logoPreview: find("logo-preview"),
+  logoFetch: find<HTMLButtonElement>("logo-fetch"),
+  logoPick: find<HTMLButtonElement>("logo-pick"),
+  logoClear: find<HTMLButtonElement>("logo-clear"),
+  logoFile: find<HTMLInputElement>("logo-file"),
+  logoHint: find("logo-hint"),
   format: find<HTMLSelectElement>("format"),
   formatHint: find("format-hint"),
   formatHelp: find<HTMLDetailsElement>("format-help"),
@@ -89,6 +96,7 @@ let editingId: string | null = null;
 let editingRule: Rule | null = null;
 let formatTouched = false;
 let liveTouched = false;
+let editingLogo: Blob | null = null;
 let busy = false;
 /** Interval that keeps a rotating code current while the card is on screen. */
 let refresh: ReturnType<typeof setInterval> | undefined;
@@ -132,6 +140,97 @@ el.viewer.addEventListener("close", () => {
   refresh = undefined;
 });
 el.viewerClose.addEventListener("click", () => el.viewer.close());
+
+/* --------------------------------------------------------- Colour and logo */
+
+/*
+ * A fixed palette rather than only the native picker: one tap applies a colour with
+ * no sheet to dismiss, and the contrast helper picks readable text for any of them.
+ * The native input stays for anything not in the list.
+ */
+const SWATCHES = [
+  "#ff2d87",
+  "#e63946",
+  "#f4801a",
+  "#ffd23f",
+  "#a3e635",
+  "#0e9d7f",
+  "#0891b2",
+  "#1f3a93",
+  "#003d7d",
+  "#7c3aed",
+  "#92400e",
+  "#1a1618",
+];
+
+const markSwatches = (color: string) => {
+  for (const swatch of el.swatches.children as HTMLCollectionOf<HTMLElement>) {
+    swatch.setAttribute("aria-pressed", String(swatch.dataset.color === color.toLowerCase()));
+  }
+};
+
+/** Downscales to a thumbnail, so a logo costs kilobytes rather than megabytes. */
+async function shrink(blob: Blob, size = 128): Promise<Blob> {
+  const url = URL.createObjectURL(blob);
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const element = new Image();
+      element.addEventListener("load", () => resolve(element));
+      element.addEventListener("error", () =>
+        reject(new Error("That file is not an image this browser can read.")),
+      );
+      element.src = url;
+    });
+    const scale = Math.min(1, size / Math.max(image.width, image.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(image.width * scale));
+    canvas.height = Math.max(1, Math.round(image.height * scale));
+    canvas.getContext("2d")?.drawImage(image, 0, 0, canvas.width, canvas.height);
+    return await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (result) => (result ? resolve(result) : reject(new Error("Could not process that image."))),
+        "image/webp",
+        0.85,
+      );
+    });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+/**
+ * Tries the shop's own site, never a third-party favicon service: asking one of those
+ * would tell it which shops you hold cards for, from an app that otherwise never
+ * phones home. Most shops refuse cross-origin reads, hence the manual fallback.
+ */
+async function fetchLogo(link: string): Promise<Blob> {
+  const origin = new URL(link).origin;
+  for (const path of ["/favicon.ico", "/apple-touch-icon.png", "/favicon.png", "/favicon.svg"]) {
+    try {
+      const response = await fetch(new URL(path, origin), { mode: "cors" });
+      if (!response.ok) continue;
+      const blob = await response.blob();
+      if (blob.size && blob.type.startsWith("image/")) return await shrink(blob);
+    } catch {
+      // Blocked or absent; try the next path.
+    }
+  }
+  throw new Error(
+    "This shop does not let its icon be read from another site. Choose an image instead.",
+  );
+}
+
+function showLogo() {
+  el.logoPreview.replaceChildren();
+  el.logoClear.hidden = !editingLogo;
+  if (!editingLogo) return;
+  const image = document.createElement("img");
+  const url = URL.createObjectURL(editingLogo);
+  image.src = url;
+  image.alt = "";
+  image.addEventListener("load", () => URL.revokeObjectURL(url), { once: true });
+  el.logoPreview.append(image);
+}
 
 /* -------------------------------------------------------------- Card editor */
 
@@ -257,9 +356,11 @@ function preview() {
     payload: el.payload.value || "Card number",
     live: el.live.checked,
     color,
+    logo: editingLogo,
   };
   el.cardPreview.replaceChildren(cardFace(draft, { interactive: false }));
   paint(el.cardPreview, color);
+  markSwatches(color);
 
   if (el.live.checked) {
     el.ruleRow.hidden = true;
@@ -293,6 +394,7 @@ function openEditor(card?: Card) {
     card?.order ?? (allCards.length ? Math.max(...allCards.map((c) => c.order ?? 0)) + 1 : 0);
   formatTouched = Boolean(card);
   liveTouched = Boolean(card);
+  editingLogo = card?.logo ?? null;
   el.editorTitle.textContent = card ? "Edit card" : "Add card";
   el.name.value = card?.name ?? "";
   el.payload.value = card?.payload ?? "";
@@ -304,9 +406,13 @@ function openEditor(card?: Card) {
   el.rule.checked = Boolean(card?.rule);
   el.deleteButton.hidden = !card;
   el.formError.textContent = "";
+  el.logoHint.textContent = "";
+  showLogo();
   preview();
   el.editor.showModal();
-  el.name.focus();
+  // Deliberately not focusing the name field: on a phone that throws the keyboard up
+  // over the form, and the colour and format are just as likely to be the first thing
+  // wanted. showModal moves focus into the dialog on its own.
 }
 
 /* ---------------------------------------------------------------- Card list */
@@ -351,7 +457,7 @@ function paintList() {
   // Reordering is off while filtered, because the resulting order would not be
   // visible, and off with a single card, where there is nothing to reorder against.
   el.cards.classList.toggle("locked", Boolean(query) || allCards.length < 2);
-  el.toolbar.hidden = allCards.length < 5;
+  el.toolbar.hidden = !allCards.length;
   el.message.textContent = !allCards.length
     ? "No cards yet."
     : query
@@ -468,6 +574,62 @@ function setBusy(value: boolean) {
 
 /* ----------------------------------------------------------------- Wiring   */
 
+for (const value of SWATCHES) {
+  const swatch = document.createElement("button");
+  swatch.type = "button";
+  swatch.className = "swatch-option";
+  swatch.dataset.color = value;
+  swatch.style.backgroundColor = value;
+  swatch.title = value;
+  swatch.setAttribute("aria-label", `Colour ${value}`);
+  swatch.addEventListener("click", () => {
+    el.color.value = value;
+    preview();
+  });
+  el.swatches.append(swatch);
+}
+
+el.logoFetch.addEventListener("click", async () => {
+  const link = el.link.value.trim();
+  if (!link) {
+    el.logoHint.textContent = "Add the shop link first, then this can try its icon.";
+    return;
+  }
+  el.logoHint.textContent = "Looking for the shop\u2019s icon\u2026";
+  try {
+    editingLogo = await fetchLogo(link);
+    el.logoHint.textContent = "Found it.";
+    showLogo();
+    preview();
+  } catch (error) {
+    el.logoHint.textContent = error instanceof Error ? error.message : String(error);
+  }
+});
+
+el.logoPick.addEventListener("click", () => el.logoFile.click());
+
+el.logoFile.addEventListener("change", async (event) => {
+  const target = event.target as HTMLInputElement;
+  const [file] = target.files ?? [];
+  target.value = "";
+  if (!file) return;
+  try {
+    editingLogo = await shrink(file);
+    el.logoHint.textContent = "";
+    showLogo();
+    preview();
+  } catch (error) {
+    el.logoHint.textContent = error instanceof Error ? error.message : String(error);
+  }
+});
+
+el.logoClear.addEventListener("click", () => {
+  editingLogo = null;
+  el.logoHint.textContent = "";
+  showLogo();
+  preview();
+});
+
 el.settingsOpen.addEventListener("click", () => el.settings.showModal());
 el.settingsClose.addEventListener("click", () => el.settings.close());
 el.add.addEventListener("click", () => openEditor());
@@ -519,6 +681,7 @@ el.form.addEventListener("submit", async (event) => {
       link: el.link.value,
       color: el.color.value,
       order: editingOrder,
+      logo: editingLogo,
     });
     el.editor.close();
     try {

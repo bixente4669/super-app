@@ -23,6 +23,8 @@ export interface Card {
   color: string;
   /** Manual priority from dragging; ties fall back to name. */
   order: number;
+  /** A small square image for the card face. Stored as a Blob; IndexedDB takes them. */
+  logo: Blob | null;
 }
 import { type FormatId, isFormat, suggestFormat } from "./barcode/encode.js";
 
@@ -55,6 +57,7 @@ function openDatabase() {
             rule: null,
             live: false,
             link: "",
+            logo: null,
             format: suggestFormat(number),
           });
           cursor.continue();
@@ -124,6 +127,7 @@ export function validate(card: Partial<Card>): Card {
     color,
     // Manual priority; cards written before ordering existed share 0 and fall back to name.
     order: Number.isFinite(card.order) ? (card.order as number) : 0,
+    logo: card.logo instanceof Blob ? card.logo : null,
   };
 }
 

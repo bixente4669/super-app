@@ -218,3 +218,24 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* A logo sits beside the store name, and replaces the swatch in the dense list. */
+.card-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.card-logo {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border: 3px solid var(--border);
+  background: #fff;
+  object-fit: contain;
+}
+
+img.swatch {
+  background: #fff;
+  object-fit: contain;
+}

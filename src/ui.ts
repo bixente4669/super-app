@@ -8,7 +8,9 @@ import type { Card } from "./cards.js";
 import { renderBarcode } from "./barcode/render.js";
 
 /** A card being previewed has no id or order yet, so only the drawn parts are needed. */
-type CardLike = Pick<Card, "name" | "payload" | "display" | "color" | "live">;
+type CardLike = Pick<Card, "name" | "payload" | "display" | "color" | "live"> & {
+  logo?: Blob | null;
+};
 
 // Choose whichever text colour has the higher WCAG contrast against the background.
 export function textColor(hex: string): string {
@@ -23,6 +25,30 @@ export function textColor(hex: string): string {
 export function paint(element: HTMLElement, color: string) {
   element.style.backgroundColor = color;
   element.style.color = textColor(color);
+}
+
+/**
+ * Object URLs are revoked when the element leaves the document, so a long list does
+ * not accumulate them. Without this every re-render would leak one per card.
+ */
+function logoImage(logo: Blob, className: string): HTMLImageElement {
+  const image = document.createElement("img");
+  image.className = className;
+  image.alt = "";
+  image.decoding = "async";
+  const url = URL.createObjectURL(logo);
+  image.src = url;
+  image.addEventListener("load", () => URL.revokeObjectURL(url), { once: true });
+  image.addEventListener("error", () => URL.revokeObjectURL(url), { once: true });
+  return image;
+}
+
+function liveBadge(view: string): HTMLElement {
+  const badge = document.createElement("em");
+  badge.className = view === "list" ? "row-badge" : "";
+  badge.textContent = view === "list" ? "↗" : "Code from the shop";
+  badge.title = "Code comes from the shop";
+  return badge;
 }
 
 const span = (className: string, text: string): HTMLSpanElement => {
@@ -43,8 +69,9 @@ export function cardFace(card: CardLike, { view = "cards", interactive = true } 
   face.className = view === "list" ? "row-open" : "card-open";
 
   if (view === "list") {
-    const swatch = span("swatch", "");
-    swatch.style.backgroundColor = card.color;
+    // The logo stands in for the colour swatch when there is one.
+    const swatch = card.logo ? logoImage(card.logo, "swatch") : span("swatch", "");
+    if (!card.logo) swatch.style.backgroundColor = card.color;
     face.append(
       swatch,
       span("row-name", card.name),
@@ -53,6 +80,14 @@ export function cardFace(card: CardLike, { view = "cards", interactive = true } 
   } else {
     const name = document.createElement("strong");
     name.textContent = card.name;
+    if (card.logo) {
+      const heading = document.createElement("span");
+      heading.className = "card-heading";
+      heading.append(logoImage(card.logo, "card-logo"), name);
+      face.append(heading, span("", card.display || card.payload || "No number added"));
+      if (card.live) face.append(liveBadge(view));
+      return face;
+    }
     face.append(name, span("", card.display || card.payload || "No number added"));
   }
 
