@@ -12,8 +12,9 @@
    * content fits in every ordinary case. A dialog is its own scroll container, so the
    * root's overscroll rule does not reach it and it would bounce against nothing.
    */
-  overflow: auto;
-  overscroll-behavior: contain;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: none;
   border: 0;
   background: var(--bg);
   color: inherit;
@@ -123,11 +124,15 @@ dialog#settings {
   padding: 24px;
   width: min(440px, calc(100% - 40px));
   max-height: calc(100dvh - 40px - var(--safe-top) - var(--safe-bottom));
-  overflow: auto;
-  /* A dialog is its own scroll container, so the root's rule never reaches it and a
-     scroll gesture ran on through to the page behind. */
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
+  /*
+   * Vertical only, and no bounce. `contain` stops the scroll chaining to the page but
+   * keeps the element's own rubber-band; `none` removes both. The old
+   * -webkit-overflow-scrolling: touch is legacy momentum scrolling and was itself a
+   * source of the bounce, so it is gone.
+   */
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: none;
   border: 4px solid var(--border);
   box-shadow: 8px 8px 0 var(--shadow);
   background: var(--surface);
