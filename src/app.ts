@@ -947,11 +947,26 @@ el.dismissHint.addEventListener("click", () => {
 async function watchForUpdates() {
   const registration = await navigator.serviceWorker.register("./sw.js");
 
+  let reloading = false;
+  const reload = () => {
+    if (reloading) return;
+    reloading = true;
+    window.location.reload();
+  };
+
   const offer = (worker: ServiceWorker) => {
     el.updateBar.hidden = false;
     el.updateNow.onclick = () => {
       el.updateNow.disabled = true;
+      el.updateNow.textContent = "Reloading…";
       worker.postMessage("skip-waiting");
+      /*
+       * Do not wait on controllerchange alone. A worker installed by an older build
+       * has no handler for that message, so it never hands over and the button sits
+       * there having done nothing. Reloading regardless is safe: the document is
+       * fetched fresh, so the newer build arrives either way.
+       */
+      setTimeout(reload, 1500);
     };
   };
 
@@ -967,12 +982,7 @@ async function watchForUpdates() {
     });
   });
 
-  let reloading = false;
-  navigator.serviceWorker.addEventListener("controllerchange", () => {
-    if (reloading) return;
-    reloading = true;
-    window.location.reload();
-  });
+  navigator.serviceWorker.addEventListener("controllerchange", reload);
 
   // An installed app can sit for days without a navigation, so check on return.
   document.addEventListener("visibilitychange", () => {
