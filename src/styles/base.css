@@ -107,6 +107,10 @@ h2 {
 
 .hint {
   margin: 8px 0;
+  /* Hints quote payloads: a rebuilt code, a scanned value, a shop's own number. Those
+     are single unbroken tokens, and without this they push their container wider than
+     the screen rather than wrapping. */
+  overflow-wrap: anywhere;
   color: var(--muted);
   font-size: 14px;
   line-height: 1.6;
