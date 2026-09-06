@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#ffe4f1" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0d0b0c" media="(prefers-color-scheme: dark)" />
+    <meta name="description" content="Your personal loyalty cards." />
+    <title>Cards · Super app</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/icons/icon-192.png" sizes="192x192" type="image/png" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <!-- Still needed by iOS before 16.4, which does not read `display` from the manifest. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Cards" />
+    <script>
+      (() => {
+        const key = "super-app-theme";
+        const system = window.matchMedia("(prefers-color-scheme: dark)");
+        let preference = "system";
+        try {
+          const saved = localStorage.getItem(key);
+          if (["light", "dark", "system"].includes(saved)) preference = saved;
+        } catch {
+          /* The theme still works when browser storage is unavailable. */
+        }
+
+        function apply() {
+          const theme = preference === "system" ? (system.matches ? "dark" : "light") : preference;
+          document.documentElement.dataset.theme = theme;
+          for (const meta of document.querySelectorAll('meta[name="theme-color"]')) {
+            meta.content = theme === "dark" ? "#0d0b0c" : "#ffe4f1";
+          }
+        }
+
+        apply();
+        system.addEventListener("change", apply);
+        document.addEventListener("DOMContentLoaded", () => {
+          const control = document.getElementById("theme");
+          control.value = preference;
+          control.addEventListener("change", () => {
+            preference = control.value;
+            apply();
+            try {
+              localStorage.setItem(key, preference);
+            } catch {
+              /* Optional preference persistence. */
+            }
+          });
+        });
+      })();
+    </script>
+    <link rel="stylesheet" href="/src/styles/index.css" />
+    <script type="module" src="/src/app.ts"></script>
+  </head>
+  <body>
+    <header>
+      <a href="./">super app<span>.</span></a>
+      <button id="settings-open" type="button" class="secondary" aria-label="Settings">Menu</button>
+    </header>
+
+    <main>
+      <div class="heading">
+        <h1>Cards<span>.</span></h1>
+        <button id="add" disabled>+ Add card</button>
+      </div>
+      <div id="toolbar" hidden>
+        <input
+          id="search"
+          type="search"
+          placeholder="Search cards"
+          autocomplete="off"
+          spellcheck="false"
+          aria-label="Search cards"
+        />
+        <div class="views" role="group" aria-label="View">
+          <button id="view-cards" type="button" aria-pressed="true">Cards</button>
+          <button id="view-list" type="button" aria-pressed="false">List</button>
+        </div>
+      </div>
+      <p id="message" role="status">Opening your cards…</p>
+      <aside id="install-hint" hidden>
+        <strong id="install-title"></strong>
+        <span id="install-text"></span>
+        <div class="hint-actions">
+          <button id="install" type="button" hidden>Install</button>
+          <button id="dismiss-hint" class="secondary" type="button">Got it</button>
+        </div>
+      </aside>
+      <section id="cards" aria-label="Loyalty cards"></section>
+      <noscript>JavaScript is needed to save and open your cards.</noscript>
+    </main>
+
+    <dialog id="settings" aria-labelledby="settings-title">
+      <div class="dialog-heading">
+        <h2 id="settings-title">Settings</h2>
+        <button type="button" id="settings-close" class="secondary" aria-label="Close">×</button>
+      </div>
+      <label for="theme">Theme</label>
+      <div class="select-wrap">
+        <select id="theme" name="theme">
+          <option value="system">System</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
+      <p class="hint">System follows your device appearance as it changes.</p>
+      <label>Backup</label>
+      <p class="hint">
+        Safari can clear this app’s storage after about a week unused. Keep an export somewhere
+        safe.
+      </p>
+      <div class="actions">
+        <button id="import" class="secondary" type="button">Import</button>
+        <button id="export" type="button">Export</button>
+      </div>
+      <input id="import-file" type="file" accept="application/json,.json" hidden />
+    </dialog>
+
+    <dialog id="viewer" aria-labelledby="viewer-name">
+      <div class="viewer-bar">
+        <button id="viewer-close" class="secondary back" type="button" aria-label="Back">←</button>
+        <strong id="viewer-name"></strong>
+        <button id="viewer-edit" class="secondary" type="button">Edit</button>
+      </div>
+      <div class="stage">
+        <div id="viewer-symbol" class="symbol"></div>
+        <p id="viewer-number"></p>
+        <p id="viewer-note" class="hint"></p>
+        <a
+          id="viewer-link"
+          class="viewer-link"
+          target="_blank"
+          rel="noopener noreferrer"
+          hidden
+        ></a>
+      </div>
+    </dialog>
+
+    <dialog id="editor" aria-labelledby="editor-title">
+      <form id="card-form">
+        <div class="dialog-heading">
+          <h2 id="editor-title">Add card</h2>
+          <button type="button" id="close" class="secondary" aria-label="Close">×</button>
+        </div>
+
+        <label for="name">Store name</label>
+        <input id="name" name="name" maxlength="100" required autocomplete="off" />
+
+        <label for="payload">Barcode contents</label>
+        <input
+          id="payload"
+          name="payload"
+          type="text"
+          maxlength="2000"
+          autocomplete="off"
+          spellcheck="false"
+          autocapitalize="off"
+        />
+        <p class="hint">
+          Exactly what the barcode encodes. This is not always the number the shop prints on screen
+          — scan the code rather than copying the digits.
+        </p>
+
+        <label for="format">Barcode format</label>
+        <div class="select-wrap"><select id="format" name="format"></select></div>
+        <p class="hint" id="format-hint"></p>
+        <details id="format-help">
+          <summary>Not sure? Compare the shapes</summary>
+          <div id="format-gallery" class="gallery"></div>
+        </details>
+
+        <label id="rule-row" hidden class="checkbox">
+          <input id="rule" name="rule" type="checkbox" />
+          <span id="rule-label"></span>
+        </label>
+
+        <label id="live-row" class="checkbox">
+          <input id="live" name="live" type="checkbox" />
+          <span id="live-label"
+            >This shop issues a new code every visit; open the shop to get it.</span
+          >
+        </label>
+
+        <label for="link">Shop link <span class="optional">(optional)</span></label>
+        <input
+          id="link"
+          name="link"
+          type="url"
+          inputmode="url"
+          maxlength="300"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="https://"
+        />
+
+        <label for="display">Printed number <span class="optional">(optional)</span></label>
+        <input
+          id="display"
+          name="display"
+          type="text"
+          maxlength="200"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <p class="hint">Shown under the barcode when the shop prints a different number.</p>
+
+        <label for="color">Card colour</label>
+        <div class="color-row">
+          <input id="color" name="color" type="color" value="#ff2d87" />
+          <output id="color-value" for="color">#ff2d87</output>
+        </div>
+
+        <div id="card-preview" class="card preview"></div>
+        <div id="preview-symbol" class="symbol preview-symbol"></div>
+        <p id="preview-error" class="hint danger" role="status"></p>
+
+        <p id="form-error" role="alert"></p>
+        <div class="actions">
+          <button id="delete" type="button" class="secondary danger" hidden>Delete card</button>
+          <button id="save" type="submit">Save card</button>
+        </div>
+      </form>
+    </dialog>
+    <div id="toast" role="status" aria-live="polite" hidden></div>
+  </body>
+</html>

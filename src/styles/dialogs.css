@@ -1,0 +1,283 @@
+/* The full-screen card viewer, the editor, and the settings sheet. */
+
+#viewer {
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  border: 0;
+  background: var(--bg);
+  color: inherit;
+
+  &[open] {
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+.viewer-bar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: max(14px, var(--safe-top));
+  padding-right: max(16px, var(--safe-right));
+  padding-bottom: 14px;
+  padding-left: max(16px, var(--safe-left));
+  border-bottom: 4px solid var(--border);
+  /* Same reason as the header: one colour along the top edge. */
+  background: var(--bg);
+
+  & strong {
+    overflow-wrap: anywhere;
+    font-size: 16px;
+    font-weight: 900;
+    letter-spacing: -0.01em;
+    text-align: center;
+    text-transform: uppercase;
+  }
+
+  & button {
+    padding: 9px 14px;
+    min-height: 42px;
+    box-shadow: 3px 3px 0 var(--shadow);
+    font-size: 13px;
+  }
+}
+
+/* Back is an arrow because it is spatial; every other action is spelled out. */
+.back {
+  padding: 0;
+  width: 48px;
+  min-height: 44px;
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.stage {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  width: min(560px, 100%);
+  margin: auto;
+  padding: 28px max(20px, var(--safe-right)) max(28px, var(--safe-bottom))
+    max(20px, var(--safe-left));
+
+  & .symbol {
+    width: 100%;
+  }
+}
+
+#viewer-number {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font:
+    800 22px/1.4 ui-monospace,
+    monospace;
+  letter-spacing: 0.06em;
+  text-align: center;
+}
+
+#viewer-note {
+  margin: 0;
+  text-align: center;
+}
+
+.viewer-link {
+  display: inline-block;
+  padding: 13px 20px;
+  min-height: 48px;
+  border: 3px solid var(--border);
+  background: var(--accent);
+  box-shadow: 4px 4px 0 var(--shadow);
+  color: #fff;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  text-transform: uppercase;
+
+  &:hover {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0 var(--shadow);
+  }
+}
+
+dialog#editor,
+dialog#settings {
+  padding: 24px;
+  width: min(440px, calc(100% - 40px));
+  max-height: calc(100dvh - 40px - var(--safe-top) - var(--safe-bottom));
+  overflow: auto;
+  border: 4px solid var(--border);
+  box-shadow: 8px 8px 0 var(--shadow);
+  background: var(--surface);
+  color: inherit;
+}
+
+dialog::backdrop {
+  background: var(--backdrop);
+}
+
+.dialog-heading {
+  margin-bottom: 22px;
+}
+
+label {
+  display: block;
+  margin: 18px 0 8px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.optional {
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+input:not([type="color"]):not([type="checkbox"]),
+select {
+  width: 100%;
+  padding: 12px;
+  border: 3px solid var(--input-border);
+  background: var(--surface);
+  color: inherit;
+  font-size: 16px;
+  font-weight: 600;
+
+  &:focus {
+    outline: 0;
+    box-shadow: 4px 4px 0 var(--accent);
+  }
+}
+
+select option:disabled {
+  color: var(--muted);
+}
+
+input[type="color"] {
+  padding: 3px;
+  width: 58px;
+  height: 48px;
+  border: 3px solid var(--input-border);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.color-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  & output {
+    color: var(--muted);
+    font:
+      700 14px ui-monospace,
+      monospace;
+  }
+}
+
+.checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  border: 3px solid var(--border);
+  background: var(--secondary);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: normal;
+  line-height: 1.55;
+  text-transform: none;
+
+  & input {
+    flex: none;
+    margin: 2px 0 0;
+    width: 20px;
+    height: 20px;
+    accent-color: var(--accent);
+  }
+}
+
+/* A native select arrow cannot be styled, so it is replaced with a themed one. */
+.select-wrap {
+  position: relative;
+  display: block;
+
+  & select {
+    padding-right: 46px;
+    appearance: none;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: 18px;
+    width: 11px;
+    height: 11px;
+    border-right: 3px solid var(--text);
+    border-bottom: 3px solid var(--text);
+    transform: translateY(-70%) rotate(45deg);
+    pointer-events: none;
+  }
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 14px;
+  margin-top: 26px;
+}
+
+#form-error {
+  color: var(--danger);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.theme-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+
+  & select {
+    padding: 8px 10px;
+    width: auto;
+    min-height: 42px;
+    font-size: 15px;
+  }
+}
+
+body:has(dialog[open]) {
+  overflow: hidden;
+}
+
+@media (max-width: 520px) {
+  dialog#editor,
+  dialog#settings {
+    padding: 20px;
+    width: calc(100% - 28px);
+  }
+}

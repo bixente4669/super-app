@@ -1,0 +1,24 @@
+{
+  "name": "super-app",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vp dev",
+    "build": "vp build",
+    "preview": "vp preview",
+    "test": "vp test",
+    "check": "vp check",
+    "lint": "vp lint",
+    "fmt": "vp fmt",
+    "icons": "node scripts/icons.js"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.1",
+    "typescript": "^7.0.2",
+    "vite-plus": "^0.3.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

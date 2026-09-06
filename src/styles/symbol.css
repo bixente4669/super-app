@@ -1,0 +1,167 @@
+/* The barcode panel, and the gallery of format samples in the editor. */
+
+/*
+ * A symbol always sits on white with black bars. This is not a stylistic choice: a
+ * themed background would drop the contrast a scanner needs, so these colours are
+ * deliberately literal rather than tokens.
+ */
+.symbol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 18px;
+  min-height: 90px;
+  border: 4px solid var(--border);
+  box-shadow: 6px 6px 0 var(--shadow);
+  background: #fff;
+
+  & svg.linear {
+    display: block;
+    width: 100%;
+    height: 110px;
+  }
+
+  & svg.qr {
+    display: block;
+    width: min(70vw, 300px);
+    height: auto;
+  }
+}
+
+.symbol-text {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: #12100f;
+  font:
+    800 20px/1.4 ui-monospace,
+    monospace;
+  text-align: center;
+}
+
+.symbol-error {
+  margin: 0;
+  color: #c8102e;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.preview-symbol {
+  margin-top: 16px;
+}
+
+/* Choosing a format means matching a shape on a physical card, so show the shapes. */
+#format-help {
+  margin: 14px 0 0;
+  border: 3px solid var(--border);
+  background: var(--surface);
+
+  & summary {
+    padding: 12px 14px;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 4px solid var(--accent);
+      outline-offset: -4px;
+    }
+  }
+}
+
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(126px, 1fr));
+  gap: 9px;
+  padding: 0 12px 14px;
+}
+
+.sample {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 7px;
+  padding: 9px;
+  min-height: 0;
+  border: 3px solid var(--border);
+  background: var(--surface);
+  box-shadow: none;
+  color: var(--text);
+  font-weight: 600;
+  letter-spacing: normal;
+  text-align: left;
+  text-transform: none;
+
+  &:hover:not(:disabled) {
+    transform: none;
+    box-shadow: none;
+  }
+
+  &:active:not(:disabled) {
+    transform: none;
+    box-shadow: none;
+    opacity: 0.72;
+  }
+
+  &[aria-pressed="true"] {
+    outline: 4px solid var(--accent);
+    outline-offset: -7px;
+  }
+
+  /* Greyed when it cannot encode what has been typed. */
+  &.unfit {
+    opacity: 0.35;
+  }
+
+  & strong {
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  & span {
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.35;
+  }
+}
+
+.sample-art {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px;
+  min-height: 50px;
+  overflow: hidden;
+  border: 2px solid var(--border);
+  background: #fff;
+
+  & svg.linear {
+    width: 100%;
+    height: 38px;
+  }
+
+  & svg.qr {
+    width: 46px;
+    height: 46px;
+  }
+}
+
+.sample-note {
+  background: #fff;
+  color: #5b5356;
+  font: 600 11px/1.3 system-ui;
+  text-align: center;
+}
+
+/* PDF417 is drawn, not generated, so it is shown slightly muted. */
+.sample-drawn {
+  opacity: 0.85;
+}

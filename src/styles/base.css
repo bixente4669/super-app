@@ -1,0 +1,122 @@
+/* Reset, buttons and shared typography. */
+
+* {
+  box-sizing: border-box;
+  /* Squared throughout; any rounding is an exception that has to ask for it. */
+  border-radius: 0;
+}
+
+html {
+  /*
+   * Safari paints a grey box over anything tappable. Every control here already has
+   * its own press state, so the highlight only muddies them.
+   */
+  -webkit-tap-highlight-color: transparent;
+
+  /*
+   * Nothing here scrolls sideways, and the offset shadows must never extend the
+   * scrollable area. `clip` rather than `hidden`, which would make the root a scroll
+   * container and break the viewer bar's sticky positioning.
+   */
+  overflow-x: clip;
+
+  /*
+   * No bounce on either axis. Vertically this also disables pull-to-refresh: the app
+   * is offline-first and has nothing to fetch, so the gesture could only reload it by
+   * accident — at the till, in front of a cashier, which is the worst possible moment.
+   */
+  overscroll-behavior: none;
+}
+
+body {
+  margin: 0;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  padding: 12px 18px;
+  /* Opts out of double-tap zoom, and with it Safari's delay before a tap registers. */
+  touch-action: manipulation;
+  min-height: 48px;
+  border: 3px solid var(--border);
+  background: var(--accent);
+  box-shadow: 4px 4px 0 var(--shadow);
+  color: #fff;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    transform 0.06s,
+    box-shadow 0.06s;
+
+  /* Pressing moves the button into its own shadow, so it reads as physical. */
+  &:hover:not(:disabled) {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0 var(--shadow);
+  }
+
+  &:active:not(:disabled) {
+    transform: translate(4px, 4px);
+    box-shadow: 0 0 0 var(--shadow);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    box-shadow: 4px 4px 0 var(--shadow);
+    cursor: wait;
+  }
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 4px solid var(--accent);
+  outline-offset: 3px;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(38px, 7vw, 58px);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+
+  & span {
+    color: var(--accent);
+  }
+}
+
+h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+.hint {
+  margin: 8px 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.danger {
+  color: var(--danger);
+}
+
+.secondary {
+  background: var(--secondary);
+  color: var(--text);
+}

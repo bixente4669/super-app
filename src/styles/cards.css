@@ -1,0 +1,220 @@
+/* The card grid, the dense list, and the drag handle shared by both. */
+
+#cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 22px;
+
+  &.list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+}
+
+/*
+ * A card is a container rather than a button, so it can hold both the button that
+ * opens it and a drag handle. The preview in the editor reuses .card-open, which is
+ * why padding and layout live there and not on .card.
+ */
+.card {
+  position: relative;
+  min-height: 170px;
+  border: 4px solid var(--border);
+  box-shadow: 6px 6px 0 var(--shadow);
+  overflow-wrap: anywhere;
+
+  & strong {
+    font-size: 23px;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+
+  & span {
+    font:
+      700 15px ui-monospace,
+      monospace;
+    white-space: pre-wrap;
+  }
+}
+
+.card-open,
+.row-open {
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: normal;
+  text-align: left;
+  text-transform: none;
+
+  &:hover {
+    transform: none;
+    box-shadow: none;
+  }
+
+  /*
+   * A card cancels the button press animation, so with the tap highlight gone it
+   * would have no feedback at all. Dimming keeps the press legible.
+   */
+  &:active {
+    transform: none;
+    box-shadow: none;
+    opacity: 0.72;
+  }
+}
+
+.card-open {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 162px;
+  /* Extra room on the right keeps text clear of the drag handle. */
+  padding: 20px 58px 20px 20px;
+}
+
+.card em,
+.row em {
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  opacity: 0.8;
+  text-transform: uppercase;
+}
+
+.row {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  border: 3px solid var(--border);
+  box-shadow: 4px 4px 0 var(--shadow);
+  background: var(--surface);
+}
+
+.row-open {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px 14px;
+  min-height: 58px;
+  color: var(--text);
+}
+
+.swatch {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border: 3px solid var(--border);
+}
+
+/* The name takes the space it needs; the number gives way and truncates first. */
+.row-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.row-number {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 50%;
+  margin-left: auto;
+  padding-left: 10px;
+  overflow: hidden;
+  color: var(--muted);
+  font:
+    700 13px ui-monospace,
+    monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row-badge {
+  flex: none;
+  margin-left: 8px;
+  font-size: 15px;
+  font-style: normal;
+  opacity: 0.75;
+}
+
+.handle {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 38px;
+  height: 38px;
+  min-height: 0;
+  padding: 0;
+  border: 3px solid currentcolor;
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
+  font-size: 15px;
+  line-height: 1;
+  opacity: 0.6;
+  cursor: grab;
+  /* Without this the browser scrolls instead of letting the drag through. */
+  touch-action: none;
+
+  &:hover:not(:disabled) {
+    transform: none;
+    box-shadow: none;
+    opacity: 1;
+  }
+
+  &:active:not(:disabled) {
+    transform: none;
+    box-shadow: none;
+    cursor: grabbing;
+  }
+}
+
+.row .handle {
+  position: static;
+  flex: none;
+  width: 46px;
+  height: auto;
+  border: 0;
+  border-left: 3px solid var(--border);
+}
+
+.dragging {
+  z-index: 5;
+  box-shadow: 10px 10px 0 var(--shadow);
+  /* So elementFromPoint reports what is underneath, not the card being dragged. */
+  pointer-events: none;
+}
+
+/* Reordering is off while filtered, and with a single card. */
+.locked .handle {
+  display: none;
+}
+
+.preview {
+  margin-top: 22px;
+
+  /* No handle on the preview, so it needs no room reserved for one. */
+  & .card-open {
+    padding-right: 20px;
+  }
+}
+
+@media (max-width: 520px) {
+  #cards {
+    grid-template-columns: 1fr;
+  }
+}

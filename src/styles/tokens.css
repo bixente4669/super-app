@@ -1,0 +1,80 @@
+/*
+ * Theme tokens. Light is defined on :root so a value always exists; the dark block
+ * only redefines what changes. Borders and shadows are solid colours rather than
+ * blurs, which is what gives the interface its flat, hard-edged look.
+ */
+:root {
+  --bg: #ffe4f1;
+  --surface: #fff;
+  --text: #12100f;
+  --muted: #5b5356;
+  --border: #12100f;
+  --shadow: #12100f;
+  --input-border: #12100f;
+  --secondary: #fff;
+  --accent: #ff2d87;
+  --focus: #12100f;
+  --danger: #c8102e;
+  --backdrop: #12100fb3;
+
+  /*
+   * Named once so every edge can be written as max(gutter, inset). The page is
+   * viewport-fit=cover, so on a notched phone these are non-zero: the top and bottom
+   * in portrait, and the left or right in landscape, where the notch and the rounded
+   * corners both intrude.
+   */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+
+  color-scheme: light;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  font-synthesis: none;
+}
+
+/* Applied by the inline theme script in index.html, before first paint. */
+:root[data-theme="dark"],
+:root:not([data-theme]) {
+  @media (prefers-color-scheme: dark) {
+    --bg: #0d0b0c;
+    --surface: #1a1618;
+    --text: #f7f2f4;
+    --muted: #b3a8ad;
+    --border: #f7f2f4;
+    --shadow: #f7f2f4;
+    --input-border: #f7f2f4;
+    --secondary: #1a1618;
+    --accent: #ff2d87;
+    --focus: #ff2d87;
+    --danger: #ff6b81;
+    --backdrop: #000000cc;
+
+    color-scheme: dark;
+  }
+}
+
+/* The explicit choice has to win regardless of what the device prefers. */
+:root[data-theme="dark"] {
+  --bg: #0d0b0c;
+  --surface: #1a1618;
+  --text: #f7f2f4;
+  --muted: #b3a8ad;
+  --border: #f7f2f4;
+  --shadow: #f7f2f4;
+  --input-border: #f7f2f4;
+  --secondary: #1a1618;
+  --accent: #ff2d87;
+  --focus: #ff2d87;
+  --danger: #ff6b81;
+  --backdrop: #000000cc;
+
+  color-scheme: dark;
+}

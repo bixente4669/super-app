@@ -1,0 +1,206 @@
+/* Page frame: header, main column, and the search and view toolbar. */
+
+header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: max(20px, var(--safe-top));
+  padding-right: max(20px, var(--safe-right), calc((100% - 1040px) / 2));
+  padding-bottom: 20px;
+  padding-left: max(20px, var(--safe-left), calc((100% - 1040px) / 2));
+  border-bottom: 4px solid var(--border);
+  /*
+   * Deliberately the page background rather than --surface. Safari tints the address
+   * bar from the colour at the top of the page, so a header that differed from the
+   * body made it sample two colours and blend them into something muddy. This also
+   * matches the theme-color meta, which is set from the same value.
+   */
+  background: var(--bg);
+
+  & a {
+    color: inherit;
+    font-size: 25px;
+    font-weight: 900;
+    letter-spacing: -0.03em;
+    text-decoration: none;
+    text-transform: uppercase;
+
+    & span {
+      color: var(--accent);
+    }
+  }
+
+  & button {
+    padding: 9px 14px;
+    min-height: 42px;
+    box-shadow: 3px 3px 0 var(--shadow);
+    font-size: 13px;
+  }
+}
+
+main {
+  max-width: 1040px;
+  margin: auto;
+  padding: 40px max(24px, var(--safe-right)) max(40px, var(--safe-bottom))
+    max(24px, var(--safe-left));
+}
+
+.heading,
+.dialog-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+#message {
+  margin: 22px 0;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.6;
+  text-transform: uppercase;
+}
+
+#install-hint {
+  display: block;
+  margin: 0 0 24px;
+  padding: 18px;
+  border: 3px solid var(--border);
+  box-shadow: 5px 5px 0 var(--shadow);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.6;
+
+  & strong {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--text);
+    text-transform: uppercase;
+  }
+
+  /* The actions are their own row; inline buttons shared a line box with the text. */
+  & .hint-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  & button {
+    padding: 8px 14px;
+    min-height: 40px;
+    font-size: 13px;
+  }
+}
+
+#toolbar {
+  display: flex;
+  gap: 10px;
+  margin: 0 0 18px;
+}
+
+#search {
+  flex: 1;
+  min-width: 0;
+  padding: 11px 12px;
+  min-height: 48px;
+  border: 3px solid var(--input-border);
+  background: var(--surface);
+  color: inherit;
+  font-size: 16px;
+  font-weight: 600;
+
+  &:focus {
+    outline: 0;
+    box-shadow: 4px 4px 0 var(--accent);
+  }
+}
+
+.views {
+  display: flex;
+  flex: none;
+
+  & button {
+    padding: 0 14px;
+    min-height: 48px;
+    border: 3px solid var(--border);
+    background: var(--secondary);
+    box-shadow: none;
+    color: var(--text);
+    font-size: 12px;
+
+    & + button {
+      border-left: 0;
+    }
+
+    &[aria-pressed="true"] {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    &:hover:not(:disabled),
+    &:active:not(:disabled) {
+      transform: none;
+      box-shadow: none;
+    }
+  }
+}
+
+/* The word "Theme" costs a whole row on a narrow header; the select labels itself. */
+@media (max-width: 520px) {
+  header {
+    padding-top: max(14px, var(--safe-top));
+    padding-right: max(16px, var(--safe-right));
+    padding-bottom: 14px;
+    padding-left: max(16px, var(--safe-left));
+  }
+
+  main {
+    padding: 26px max(18px, var(--safe-right)) max(24px, var(--safe-bottom))
+      max(18px, var(--safe-left));
+  }
+
+  .heading {
+    gap: 12px;
+
+    & button {
+      padding: 12px 14px;
+      font-size: 13px;
+    }
+  }
+}
+
+/*
+ * Shown after an export or import, both started from the settings sheet. The sheet is
+ * closed first, so this does not need the top layer to be seen.
+ */
+#toast {
+  position: fixed;
+  right: 0;
+  bottom: max(20px, var(--safe-bottom));
+  left: 0;
+  z-index: 10;
+  width: max-content;
+  max-width: calc(100% - 32px - var(--safe-left) - var(--safe-right));
+  margin: 0 auto;
+  padding: 14px 18px;
+  border: 3px solid var(--border);
+  background: var(--accent);
+  box-shadow: 6px 6px 0 var(--shadow);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-align: center;
+  text-transform: uppercase;
+
+  &.error {
+    background: var(--surface);
+    color: var(--danger);
+  }
+}
