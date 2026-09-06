@@ -58,7 +58,9 @@ export async function exportCards() {
   const file = new File([text], filename(), { type: "application/json" });
   if (navigator.canShare?.({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], title: "Super app cards" });
+      // Files only. A title here is treated as a second item to share, so saving to
+      // Files produced the backup plus a stray text note beside it.
+      await navigator.share({ files: [file] });
       return "shared";
     } catch (error) {
       // A cancelled share is the user's choice, not a failure to fall back from.
